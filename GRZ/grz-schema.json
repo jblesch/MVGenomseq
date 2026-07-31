@@ -1,6 +1,7 @@
 {
   "$schema":"https://json-schema.org/draft/2020-12/schema",
-  "version":"1.3.1",
+  "$id":"https://raw.githubusercontent.com/BfArM-MVH/MVGenomseq_GRZ/v2.0.0/GRZ/grz-schema.json",
+  "version":"2.0.0",
   "title":"Metadata Submission Genomic Data Center (GRZ)",
   "description":"General metadata schema for submissions to the GRZ",
   "type":"object",
@@ -26,6 +27,11 @@
         "labName"
       ],
       "properties":{
+        "schemaVersion":{
+          "type":"string",
+          "description":"Version of the GRZ metadata schema this submission conforms to, e.g. '2.0.0'.",
+          "pattern":"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+        },
         "submissionDate":{
           "type":"string",
           "description":"Date of submission in ISO 8601 format YYYY-MM-DD",
@@ -128,6 +134,21 @@
           "researchConsents",
           "labData"
         ],
+        "if":{
+          "required":[
+            "relation"
+          ],
+          "properties":{
+            "relation":{
+              "const":"other"
+            }
+          }
+        },
+        "then":{
+          "required":[
+            "relationOther"
+          ]
+        },
         "properties":{
           "donorPseudonym":{
             "type":"string",
@@ -153,8 +174,17 @@
               "sister",
               "child",
               "index",
+              "aunt",
+              "uncle",
+              "grandparent",
+              "grandchild",
               "other"
             ]
+          },
+          "relationOther":{
+            "type":"string",
+            "description":"Specification of the relationship to the index patient if 'relation' is 'other'. Required in that case.",
+            "minLength":1
           },
           "mvConsent":{
             "type":"object",
@@ -262,6 +292,74 @@
           "labData":{
             "type":"array",
             "description":"Lab data related to the donor.",
+            "if":{
+              "contains":{
+                "required":[
+                  "sequencingScope",
+                  "sequenceData"
+                ],
+                "properties":{
+                  "sequenceData":{
+                    "required":[
+                      "files"
+                    ],
+                    "properties":{
+                      "files":{
+                        "contains":{
+                          "required":[
+                            "fileType"
+                          ],
+                          "properties":{
+                            "fileType":{
+                              "enum":[
+                                "bam",
+                                "fastq"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "sequencingScope":{
+                    "enum":[
+                      "wgs",
+                      "wxs",
+                      "panel"
+                    ]
+                  }
+                }
+              }
+            },
+            "then":{
+              "description":"If any BAM or FASTQ file is submitted for a DNA variant-calling library of this donor (sequencingScope of wgs, wxs or panel), at least one VCF file must be submitted for the same donor, so that research-consented submissions can be reanalyzed without reprocessing the raw sequence data and so that every VCF is unambiguously attributable to a donor. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is to be listed under each donor it covers. Libraries whose scope is 'other' or 'unknown' are exempt, since they need not produce VCFs.",
+              "contains":{
+                "required":[
+                  "sequenceData"
+                ],
+                "properties":{
+                  "sequenceData":{
+                    "required":[
+                      "files"
+                    ],
+                    "properties":{
+                      "files":{
+                        "contains":{
+                          "required":[
+                            "fileType"
+                          ],
+                          "properties":{
+                            "fileType":{
+                              "const":"vcf"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
             "items":{
               "type":"object",
               "required":[
@@ -273,8 +371,10 @@
                 "sampleConservation",
                 "sequenceType",
                 "sequenceSubtype",
+                "caseControlStatus",
                 "fragmentationMethod",
-                "libraryType",
+                "platformCategory",
+                "sequencingScope",
                 "libraryPrepKit",
                 "libraryPrepKitManufacturer",
                 "sequencerModel",
@@ -285,6 +385,198 @@
                 "enrichmentKitDescription",
                 "barcode",
                 "sequencingLayout"
+              ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":[
+                      "tissueOntology"
+                    ],
+                    "properties":{
+                      "tissueOntology":{
+                        "required":[
+                          "name"
+                        ],
+                        "properties":{
+                          "name":{
+                            "const":"BRENDA Tissue Ontology"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then":{
+                    "properties":{
+                      "tissueTypeId":{
+                        "pattern":"^BTO:[0-9]{7}$"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "readStructure"
+                    ],
+                    "properties":{
+                      "readStructure":{
+                        "contains":{
+                          "required":[
+                            "segmentType"
+                          ],
+                          "properties":{
+                            "segmentType":{
+                              "const":"umi"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "umiKitName",
+                      "umiKitManufacturer",
+                      "customUmiUsed"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sampleConservation"
+                    ],
+                    "properties":{
+                      "sampleConservation":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sampleConservationOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sequenceSubtype"
+                    ],
+                    "properties":{
+                      "sequenceSubtype":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sequenceSubtypeOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "fragmentationMethod"
+                    ],
+                    "properties":{
+                      "fragmentationMethod":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "fragmentationMethodOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "enrichmentKitManufacturer"
+                    ],
+                    "properties":{
+                      "enrichmentKitManufacturer":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "enrichmentKitManufacturerOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "libraryPrepKit"
+                    ],
+                    "properties":{
+                      "libraryPrepKit":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "libraryPrepKitOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sequencerModel"
+                    ],
+                    "properties":{
+                      "sequencerModel":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sequencerModelOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sequencingScope"
+                    ],
+                    "properties":{
+                      "sequencingScope":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sequencingScopeOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sequencingLayout"
+                    ],
+                    "properties":{
+                      "sequencingLayout":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sequencingLayoutOther"
+                    ]
+                  }
+                }
               ],
               "properties":{
                 "labDataName":{
@@ -297,10 +589,34 @@
                     "name",
                     "version"
                   ],
+                  "if":{
+                    "required":[
+                      "name"
+                    ],
+                    "properties":{
+                      "name":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "nameOther"
+                    ]
+                  },
                   "properties":{
                     "name":{
                       "type":"string",
-                      "description":"Name of the tissue ontology"
+                      "description":"Name of the tissue ontology. Use the BRENDA Tissue Ontology where possible, so that tissueTypeId values are comparable across submissions. If a different ontology is used, set 'other' and name it in nameOther.",
+                      "enum":[
+                        "BRENDA Tissue Ontology",
+                        "other"
+                      ]
+                    },
+                    "nameOther":{
+                      "type":"string",
+                      "description":"Name of the tissue ontology actually used. Required if name is 'other'.",
+                      "minLength":1
                     },
                     "version":{
                       "type":"string",
@@ -323,14 +639,23 @@
                 },
                 "sampleConservation":{
                   "type":"string",
-                  "description":"Sample conservation",
+                  "description":"How the sample was conserved and stored. 'refrigerator', 'freezer', 'ultra-low-freezer' and 'cryogenic-freezer' record the storage temperature; 'ffpe' formalin-fixed and paraffin-embedded; 'none' that no storage method was applied. 'fresh-tissue' is retained for tissue processed without storage; prefer 'none' where it applies.",
                   "enum":[
-                    "fresh-tissue",
-                    "cryo-frozen",
+                    "refrigerator",
+                    "freezer",
+                    "ultra-low-freezer",
+                    "cryogenic-freezer",
                     "ffpe",
+                    "fresh-tissue",
+                    "none",
                     "other",
                     "unknown"
                   ]
+                },
+                "sampleConservationOther":{
+                  "type":"string",
+                  "description":"Specification of How the sample was conserved if 'sampleConservation' is 'other'. Required in that case.",
+                  "minLength":1
                 },
                 "sequenceType":{
                   "type":"string",
@@ -350,6 +675,19 @@
                     "unknown"
                   ]
                 },
+                "sequenceSubtypeOther":{
+                  "type":"string",
+                  "description":"Specification of the subtype of the sequence if 'sequenceSubtype' is 'other'. Required in that case.",
+                  "minLength":1
+                },
+                "caseControlStatus":{
+                  "type":"string",
+                  "description":"Whether this sample is a case or a control for the phenotype under consideration. Describes the role of the sample in the study design, not the material itself; the matched normal of a tumor/normal pair is therefore 'control'.",
+                  "enum":[
+                    "case",
+                    "control"
+                  ]
+                },
                 "fragmentationMethod":{
                   "type":"string",
                   "description":"Fragmentation method",
@@ -361,33 +699,56 @@
                     "unknown"
                   ]
                 },
-                "libraryType":{
+                "fragmentationMethodOther":{
                   "type":"string",
-                  "description":"Library type",
+                  "description":"Specification of the fragmentation method used if 'fragmentationMethod' is 'other'. Required in that case.",
+                  "minLength":1
+                },
+                "platformCategory":{
+                  "type":"string",
+                  "description":"The read-length category of the sequencing platform: 'short-read' for platforms producing short reads, 'long-read' for platforms producing long reads. Stated separately from sequencingScope, which names what was sequenced.",
                   "enum":[
-                    "panel",
-                    "panel_lr",
-                    "wes",
-                    "wes_lr",
+                    "short-read",
+                    "long-read"
+                  ]
+                },
+                "sequencingScope":{
+                  "type":"string",
+                  "description":"The biological target of the library, independent of the sequencing platform. 'wgs' whole genome sequencing, 'wxs' whole exome sequencing, i.e. sequencing of exonic regions selected from genomic DNA (not transcriptome sequencing), 'panel' a targeted gene panel, 'other' a scope not covered by this list, 'unknown' the scope is not specified.",
+                  "enum":[
                     "wgs",
-                    "wgs_lr",
                     "wxs",
-                    "wxs_lr",
+                    "panel",
                     "other",
                     "unknown"
                   ]
                 },
-                "libraryPrepKit":{
+                "sequencingScopeOther":{
                   "type":"string",
-                  "description":"Name/version of the library prepkit"
+                  "description":"Specification of the biological target of the library if 'sequencingScope' is 'other'. Required in that case.",
+                  "minLength":1
+                },
+                "libraryPrepKit":{
+                  "$ref":"vocabularies/library-preparation-kit-retail-name.json",
+                  "description":"Retail name of the kit used to construct the library. Values come from the controlled vocabulary in vocabularies/library-preparation-kit-retail-name.json. Use 'other' and libraryPrepKitOther if the kit is not listed."
+                },
+                "libraryPrepKitOther":{
+                  "type":"string",
+                  "description":"Name and version of the library preparation kit used. Required if 'libraryPrepKit' is 'other'.",
+                  "minLength":1
                 },
                 "libraryPrepKitManufacturer":{
                   "type":"string",
                   "description":"Library prep kit manufacturer"
                 },
                 "sequencerModel":{
+                  "$ref":"vocabularies/instrument-model.json",
+                  "description":"Name and model of the sequencing platform. Values come from the controlled vocabulary in vocabularies/instrument-model.json. Use 'other' and sequencerModelOther if the model is not listed."
+                },
+                "sequencerModelOther":{
                   "type":"string",
-                  "description":"Name/version of the sequencer model"
+                  "description":"Name and version of the sequencer model used. Required if 'sequencerModel' is 'other'.",
+                  "minLength":1
                 },
                 "sequencerManufacturer":{
                   "type":"string",
@@ -405,14 +766,19 @@
                   "type":"string",
                   "description":"Manufacturer of the enrichment kit",
                   "enum":[
-                    "Illumina",
-                    "Agilent",
-                    "Twist",
-                    "NEB",
+                    "illumina",
+                    "agilent",
+                    "twist",
+                    "neb",
                     "other",
                     "unknown",
                     "none"
                   ]
+                },
+                "enrichmentKitManufacturerOther":{
+                  "type":"string",
+                  "description":"Specification of the manufacturer of the enrichment kit if 'enrichmentKitManufacturer' is 'other'. Required in that case.",
+                  "minLength":1
                 },
                 "enrichmentKitDescription":{
                   "type":"string",
@@ -420,17 +786,81 @@
                 },
                 "barcode":{
                   "type":"string",
-                  "description":"The barcode used or 'na'"
+                  "description":"The barcode sequence used for this sample, or 'na'. This is the sequence itself; its position within the reads is described by readStructure."
+                },
+                "readStructure":{
+                  "type":"array",
+                  "description":"Positions of the UMI and barcode segments within the sequencing reads. Describes the library design and therefore applies to all files of this labData entry. Offsets are 0-based from the start of the respective read.",
+                  "minItems":1,
+                  "items":{
+                    "type":"object",
+                    "required":[
+                      "readType",
+                      "offset",
+                      "length",
+                      "segmentType"
+                    ],
+                    "properties":{
+                      "readType":{
+                        "type":"string",
+                        "description":"The read in which this segment is located.",
+                        "enum":[
+                          "R1",
+                          "R2",
+                          "I1",
+                          "I2"
+                        ]
+                      },
+                      "offset":{
+                        "type":"integer",
+                        "description":"0-based offset of the segment from the start of the read.",
+                        "minimum":0
+                      },
+                      "length":{
+                        "type":"integer",
+                        "description":"Length of the segment in bases.",
+                        "minimum":1
+                      },
+                      "segmentType":{
+                        "type":"string",
+                        "description":"What the segment encodes: 'umi' unique molecular identifier, 'sampleBarcode' sample index, 'spacer' a skipped region, 'insert' the template sequence.",
+                        "enum":[
+                          "umi",
+                          "sampleBarcode",
+                          "spacer",
+                          "insert"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "umiKitName":{
+                  "type":"string",
+                  "description":"Name/version of the kit used to introduce the UMIs. Required if readStructure declares a 'umi' segment.",
+                  "minLength":1
+                },
+                "umiKitManufacturer":{
+                  "type":"string",
+                  "description":"Manufacturer of the UMI kit. Required if readStructure declares a 'umi' segment.",
+                  "minLength":1
+                },
+                "customUmiUsed":{
+                  "type":"boolean",
+                  "description":"Whether customized UMIs were used instead of the kit's standard UMIs. Required if readStructure declares a 'umi' segment."
                 },
                 "sequencingLayout":{
                   "type":"string",
-                  "description":"The sequencing layout, aka the end type of sequencing.",
+                  "description":"The sequencing layout, aka the end type of sequencing: 'single-end' one read per fragment, 'paired-end' two reads per fragment, 'other' a layout not covered by this list.",
                   "enum":[
                     "single-end",
                     "paired-end",
-                    "reverse",
                     "other"
                   ]
+                },
+                "sequencingLayoutOther":{
+                  "type":"string",
+                  "description":"Specification of the sequencing layout if 'sequencingLayout' is 'other'. Required in that case.",
+                  "minLength":1
                 },
                 "tumorCellCount":{
                   "type":"array",
@@ -441,6 +871,21 @@
                       "count",
                       "method"
                     ],
+                    "if":{
+                      "required":[
+                        "method"
+                      ],
+                      "properties":{
+                        "method":{
+                          "const":"other"
+                        }
+                      }
+                    },
+                    "then":{
+                      "required":[
+                        "methodOther"
+                      ]
+                    },
                     "properties":{
                       "count":{
                         "type":"number",
@@ -457,6 +902,11 @@
                           "other",
                           "unknown"
                         ]
+                      },
+                      "methodOther":{
+                        "type":"string",
+                        "description":"Specification of the method used to determine the tumor cell count if 'method' is 'other'. Required in that case.",
+                        "minLength":1
                       }
                     }
                   }
@@ -557,7 +1007,7 @@
                     },
                     "files":{
                       "type":"array",
-                      "description":"List of files generated and required in this analysis.",
+                      "description":"List of files generated and required in this analysis. If BAM or FASTQ files are submitted for a DNA variant-calling library, at least one VCF file must be submitted for the same donor; see the conditional rule on labData.",
                       "items":{
                         "type":"object",
                         "required":[
@@ -613,9 +1063,11 @@
                             "type":"string",
                             "enum":[
                               "R1",
-                              "R2"
+                              "R2",
+                              "I1",
+                              "I2"
                             ],
-                            "description":"Indicates the read order for paired-end reads."
+                            "description":"Indicates which read this file contains: R1 and R2 for the template reads of a paired-end run, I1 and I2 for the index reads."
                           },
                           "readLength":{
                             "type":"integer",
