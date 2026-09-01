@@ -583,6 +583,23 @@
                       "libraryPrepKitManufacturerOther"
                     ]
                   }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "kitManufacturer"
+                    ],
+                    "properties":{
+                      "kitManufacturer":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "kitManufacturerOther"
+                    ]
+                  }
                 }
               ],
               "properties":{
@@ -794,18 +811,46 @@
                 },
                 "kitManufacturer":{
                   "type":"string",
-                  "description":"Sequencing kit manufacturer"
+                  "description":"Manufacturer of the sequencing kit. The same list of manufacturers as libraryPrepKitManufacturer and enrichmentKitManufacturer. If the manufacturer is not listed, use 'other' and name it in kitManufacturerOther.",
+                  "enum":[
+                    "illumina",
+                    "twist",
+                    "neb",
+                    "agilent",
+                    "idt",
+                    "qiagen",
+                    "oncodna",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "watchmaker",
+                    "mgi",
+                    "pacific_biosciences",
+                    "other",
+                    "none"
+                  ]
+                },
+                "kitManufacturerOther":{
+                  "type":"string",
+                  "minLength":1,
+                  "description":"Name of the sequencing kit manufacturer. Required if 'kitManufacturer' is 'other'."
                 },
                 "enrichmentKitManufacturer":{
                   "type":"string",
-                  "description":"Manufacturer of the enrichment kit",
+                  "description":"Manufacturer of the enrichment kit. The same list of manufacturers as libraryPrepKitManufacturer. Use 'none' where no enrichment was performed; if the manufacturer is not listed, use 'other' and name it in enrichmentKitManufacturerOther.",
                   "enum":[
                     "illumina",
-                    "agilent",
                     "twist",
                     "neb",
+                    "agilent",
+                    "idt",
+                    "qiagen",
+                    "oncodna",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "watchmaker",
+                    "mgi",
+                    "pacific_biosciences",
                     "other",
-                    "unknown",
                     "none"
                   ]
                 },
