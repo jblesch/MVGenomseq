@@ -369,7 +369,6 @@
                 "libraryPrepKit",
                 "libraryPrepKitManufacturer",
                 "sequencerModel",
-                "sequencerManufacturer",
                 "kitName",
                 "kitManufacturer",
                 "enrichmentKitManufacturer",
@@ -567,6 +566,23 @@
                       "libraryTypeOther"
                     ]
                   }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "sequencerManufacturer"
+                    ],
+                    "properties":{
+                      "sequencerManufacturer":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "sequencerManufacturerOther"
+                    ]
+                  }
                 }
               ],
               "properties":{
@@ -737,7 +753,23 @@
                 },
                 "sequencerManufacturer":{
                   "type":"string",
-                  "description":"Sequencer manufacturer"
+                  "description":"Manufacturer of the sequencing instrument. Optional: for every value of sequencerModel except 'other' and 'unspecified' the manufacturer follows from the model. Where it is given it must be one of these values; if the manufacturer is not listed, use 'other' and name it in sequencerManufacturerOther.",
+                  "enum":[
+                    "illumina",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "pacific_biosciences",
+                    "mgi",
+                    "element_biosciences",
+                    "helicos",
+                    "ultima_genomics",
+                    "other"
+                  ]
+                },
+                "sequencerManufacturerOther":{
+                  "type":"string",
+                  "description":"Name of the sequencer manufacturer. Required if 'sequencerManufacturer' is 'other'.",
+                  "minLength":1
                 },
                 "kitName":{
                   "type":"string",
