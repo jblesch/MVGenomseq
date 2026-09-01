@@ -295,7 +295,6 @@
             "if":{
               "contains":{
                 "required":[
-                  "sequencingScope",
                   "sequenceData"
                 ],
                 "properties":{
@@ -320,19 +319,12 @@
                         }
                       }
                     }
-                  },
-                  "sequencingScope":{
-                    "enum":[
-                      "wgs",
-                      "wxs",
-                      "panel"
-                    ]
                   }
                 }
               }
             },
             "then":{
-              "description":"If any BAM or FASTQ file is submitted for a DNA variant-calling library of this donor (sequencingScope of wgs, wxs or panel), at least one VCF file must be submitted for the same donor, so that research-consented submissions can be reanalyzed without reprocessing the raw sequence data and so that every VCF is unambiguously attributable to a donor. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is to be listed under each donor it covers. Libraries whose scope is 'other' or 'unknown' are exempt, since they need not produce VCFs.",
+              "description":"If any BAM or FASTQ file is submitted for a donor, at least one VCF file must be submitted for the same donor, so that research-consented submissions can be reanalyzed without reprocessing the raw sequence data and so that every VCF is unambiguously attributable to a donor. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is to be listed under each donor it covers.",
               "contains":{
                 "required":[
                   "sequenceData"
@@ -373,8 +365,7 @@
                 "sequenceSubtype",
                 "caseControlStatus",
                 "fragmentationMethod",
-                "platformCategory",
-                "sequencingScope",
+                "libraryType",
                 "libraryPrepKit",
                 "libraryPrepKitManufacturer",
                 "sequencerModel",
@@ -546,23 +537,6 @@
                 {
                   "if":{
                     "required":[
-                      "sequencingScope"
-                    ],
-                    "properties":{
-                      "sequencingScope":{
-                        "const":"other"
-                      }
-                    }
-                  },
-                  "then":{
-                    "required":[
-                      "sequencingScopeOther"
-                    ]
-                  }
-                },
-                {
-                  "if":{
-                    "required":[
                       "sequencingLayout"
                     ],
                     "properties":{
@@ -574,6 +548,23 @@
                   "then":{
                     "required":[
                       "sequencingLayoutOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "libraryType"
+                    ],
+                    "properties":{
+                      "libraryType":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "libraryTypeOther"
                     ]
                   }
                 }
@@ -654,7 +645,7 @@
                 },
                 "sampleConservationOther":{
                   "type":"string",
-                  "description":"Specification of How the sample was conserved if 'sampleConservation' is 'other'. Required in that case.",
+                  "description":"Specification of how the sample was conserved if 'sampleConservation' is 'other'. Required in that case.",
                   "minLength":1
                 },
                 "sequenceType":{
@@ -704,28 +695,22 @@
                   "description":"Specification of the fragmentation method used if 'fragmentationMethod' is 'other'. Required in that case.",
                   "minLength":1
                 },
-                "platformCategory":{
+                "libraryType":{
                   "type":"string",
-                  "description":"The read-length category of the sequencing platform: 'short-read' for platforms producing short reads, 'long-read' for platforms producing long reads. Stated separately from sequencingScope, which names what was sequenced.",
+                  "description":"Library type: 'wgs' whole genome sequencing, 'wes' whole exome sequencing, 'panel' a targeted gene panel, each with an '_lr' variant for long-read sequencing; 'other' a library type not covered by this list, which must then be named in libraryTypeOther.",
                   "enum":[
-                    "short-read",
-                    "long-read"
-                  ]
-                },
-                "sequencingScope":{
-                  "type":"string",
-                  "description":"The biological target of the library, independent of the sequencing platform. 'wgs' whole genome sequencing, 'wxs' whole exome sequencing, i.e. sequencing of exonic regions selected from genomic DNA (not transcriptome sequencing), 'panel' a targeted gene panel, 'other' a scope not covered by this list, 'unknown' the scope is not specified.",
-                  "enum":[
-                    "wgs",
-                    "wxs",
                     "panel",
-                    "other",
-                    "unknown"
+                    "panel_lr",
+                    "wes",
+                    "wes_lr",
+                    "wgs",
+                    "wgs_lr",
+                    "other"
                   ]
                 },
-                "sequencingScopeOther":{
+                "libraryTypeOther":{
                   "type":"string",
-                  "description":"Specification of the biological target of the library if 'sequencingScope' is 'other'. Required in that case.",
+                  "description":"Specification of the library type if 'libraryType' is 'other'. Required in that case.",
                   "minLength":1
                 },
                 "libraryPrepKit":{
