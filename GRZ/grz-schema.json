@@ -503,23 +503,6 @@
                 {
                   "if":{
                     "required":[
-                      "sequenceSubtype"
-                    ],
-                    "properties":{
-                      "sequenceSubtype":{
-                        "const":"other"
-                      }
-                    }
-                  },
-                  "then":{
-                    "required":[
-                      "sequenceSubtypeOther"
-                    ]
-                  }
-                },
-                {
-                  "if":{
-                    "required":[
                       "fragmentationMethod"
                     ],
                     "properties":{
@@ -745,18 +728,11 @@
                 },
                 "sequenceSubtype":{
                   "type":"string",
-                  "description":"Subtype of sequence (germline, somatic, etc.)",
+                  "description":"Subtype of the sequence: 'germline' or 'somatic'.",
                   "enum":[
                     "germline",
-                    "somatic",
-                    "other",
-                    "unknown"
+                    "somatic"
                   ]
-                },
-                "sequenceSubtypeOther":{
-                  "type":"string",
-                  "description":"Specification of the subtype of the sequence if 'sequenceSubtype' is 'other'. Required in that case.",
-                  "minLength":1
                 },
                 "caseControlStatus":{
                   "type":"string",
@@ -768,13 +744,12 @@
                 },
                 "fragmentationMethod":{
                   "type":"string",
-                  "description":"Fragmentation method",
+                  "description":"Method used to fragment the nucleic acid: 'sonication', 'enzymatic', 'none' where the material was not fragmented, or 'other', which must be named in fragmentationMethodOther.",
                   "enum":[
                     "sonication",
                     "enzymatic",
                     "none",
-                    "other",
-                    "unknown"
+                    "other"
                   ]
                 },
                 "fragmentationMethodOther":{
@@ -1004,6 +979,29 @@
                       "count",
                       "method"
                     ],
+                    "properties":{
+                      "count":{
+                        "type":"number",
+                        "description":"Tumor cell count in %",
+                        "minimum":0,
+                        "maximum":100
+                      },
+                      "method":{
+                        "type":"string",
+                        "description":"Method used to determine the tumor cell count. 'unknown' where a count was supplied without its provenance, for example from an external pathology report; 'other' for a method not listed, which must be named in methodOther.",
+                        "enum":[
+                          "pathology",
+                          "bioinformatics",
+                          "other",
+                          "unknown"
+                        ]
+                      },
+                      "methodOther":{
+                        "type":"string",
+                        "minLength":1,
+                        "description":"Specification of the method used to determine the tumor cell count if 'method' is 'other'. Required in that case."
+                      }
+                    },
                     "if":{
                       "required":[
                         "method"
@@ -1018,29 +1016,6 @@
                       "required":[
                         "methodOther"
                       ]
-                    },
-                    "properties":{
-                      "count":{
-                        "type":"number",
-                        "description":"Tumor cell count in %",
-                        "minimum":0,
-                        "maximum":100
-                      },
-                      "method":{
-                        "type":"string",
-                        "description":"Method used to determine cell count.",
-                        "enum":[
-                          "pathology",
-                          "bioinformatics",
-                          "other",
-                          "unknown"
-                        ]
-                      },
-                      "methodOther":{
-                        "type":"string",
-                        "description":"Specification of the method used to determine the tumor cell count if 'method' is 'other'. Required in that case.",
-                        "minLength":1
-                      }
                     }
                   }
                 },
