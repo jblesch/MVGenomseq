@@ -372,7 +372,6 @@
                 "kitName",
                 "kitManufacturer",
                 "enrichmentKitManufacturer",
-                "enrichmentKitDescription",
                 "barcode",
                 "sequencingLayout"
               ],
@@ -635,6 +634,25 @@
                       "kitManufacturerOther"
                     ]
                   }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "enrichmentKitManufacturer"
+                    ],
+                    "properties":{
+                      "enrichmentKitManufacturer":{
+                        "not":{
+                          "const":"none"
+                        }
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "enrichmentKitDescription"
+                    ]
+                  }
                 }
               ],
               "properties":{
@@ -890,7 +908,8 @@
                 },
                 "enrichmentKitDescription":{
                   "type":"string",
-                  "description":"Name/version of the enrichment kit"
+                  "description":"Name and version of the enrichment kit, as free text. Required whenever enrichmentKitManufacturer names a manufacturer, and to be omitted where it is 'none': the absence of enrichment is recorded once, by the manufacturer field, and does not need restating here.",
+                  "minLength":1
                 },
                 "barcode":{
                   "type":"string",
