@@ -502,23 +502,6 @@
                 {
                   "if":{
                     "required":[
-                      "libraryPrepKit"
-                    ],
-                    "properties":{
-                      "libraryPrepKit":{
-                        "const":"other"
-                      }
-                    }
-                  },
-                  "then":{
-                    "required":[
-                      "libraryPrepKitOther"
-                    ]
-                  }
-                },
-                {
-                  "if":{
-                    "required":[
                       "sequencerModel"
                     ],
                     "properties":{
@@ -581,6 +564,23 @@
                   "then":{
                     "required":[
                       "sequencerManufacturerOther"
+                    ]
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "libraryPrepKitManufacturer"
+                    ],
+                    "properties":{
+                      "libraryPrepKitManufacturer":{
+                        "const":"other"
+                      }
+                    }
+                  },
+                  "then":{
+                    "required":[
+                      "libraryPrepKitManufacturerOther"
                     ]
                   }
                 }
@@ -730,17 +730,34 @@
                   "minLength":1
                 },
                 "libraryPrepKit":{
-                  "$ref":"vocabularies/library-preparation-kit-retail-name.json",
-                  "description":"Retail name of the kit used to construct the library. Values come from the controlled vocabulary in vocabularies/library-preparation-kit-retail-name.json. Use 'other' and libraryPrepKitOther if the kit is not listed."
-                },
-                "libraryPrepKitOther":{
                   "type":"string",
-                  "description":"Name and version of the library preparation kit used. Required if 'libraryPrepKit' is 'other'.",
-                  "minLength":1
+                  "minLength":1,
+                  "description":"Name of the kit used to construct the library, as free text. The field is deliberately not controlled: library preparation kits are released continuously and laboratories also use custom designs, so no closed list can hold them. Record the manufacturer in libraryPrepKitManufacturer, which is controlled, and give the kit name here as precisely as the supplier states it."
                 },
                 "libraryPrepKitManufacturer":{
                   "type":"string",
-                  "description":"Library prep kit manufacturer"
+                  "description":"Manufacturer of the library preparation kit. If the manufacturer is not listed, use 'other' and name it in libraryPrepKitManufacturerOther; use 'none' where no kit was used.",
+                  "enum":[
+                    "illumina",
+                    "twist",
+                    "neb",
+                    "agilent",
+                    "idt",
+                    "qiagen",
+                    "oncodna",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "watchmaker",
+                    "mgi",
+                    "pacific_biosciences",
+                    "other",
+                    "none"
+                  ]
+                },
+                "libraryPrepKitManufacturerOther":{
+                  "type":"string",
+                  "minLength":1,
+                  "description":"Name of the library preparation kit manufacturer. Required if 'libraryPrepKitManufacturer' is 'other'."
                 },
                 "sequencerModel":{
                   "$ref":"vocabularies/instrument-model.json",
