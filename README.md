@@ -16,6 +16,11 @@ This folder contains the core JSON Schema for the **data types** used in the mod
 #### Common
 - `grz-schema.json`: General metadata schema for submissions to the GRZ
 
+#### `GRZ/vocabularies`
+
+Controlled vocabularies too long to keep inline in the schema. Each file is a standalone JSON Schema declaring a `$id` and a string `enum`, and is pulled into `grz-schema.json` by `$ref`.
+
+- `instrument-model.json`: sequencing instrument models
 
 ### `/Prüfbericht`
 
@@ -23,3 +28,15 @@ This folder contains the schema and example data for **Prüfberichte** (data rev
 
 - `Modellvorhaben_SubmissionSchema`: Schema definition for a review report
 - `submission_example`: Example file conforming to the schema
+
+## Validating a submission
+
+Your validator needs the vocabulary file as well as `grz-schema.json`. Cloning or downloading this repository gives you the files, but that alone is not enough: JSON Schema libraries do not search the filesystem for referenced files, so it must be registered explicitly.
+
+- **Python** (`jsonschema`): build a `referencing.Registry` from the files in `GRZ/vocabularies/` and pass it to the validator
+- **JavaScript** (`ajv`): `ajv.addSchema()` the vocabulary file before compiling the schema
+- **CLI tools**: most accept a flag for additional schema files, e.g. `ajv-cli -r`
+
+Alternatively, allow the validator to fetch the file from the published URL, which the `$ref` resolves to.
+
+Validating `grz-schema.json` on its own, with no vocabulary file registered, fails to resolve the reference rather than validating your submission.
