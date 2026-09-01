@@ -389,7 +389,7 @@
                         ],
                         "properties":{
                           "name":{
-                            "const":"BRENDA Tissue Ontology"
+                            "const":"snomed_ct"
                           }
                         }
                       }
@@ -398,7 +398,59 @@
                   "then":{
                     "properties":{
                       "tissueTypeId":{
-                        "pattern":"^BTO:[0-9]{7}$"
+                        "pattern":"^[0-9]{6,18}$"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "tissueOntology"
+                    ],
+                    "properties":{
+                      "tissueOntology":{
+                        "required":[
+                          "name"
+                        ],
+                        "properties":{
+                          "name":{
+                            "const":"uberon"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then":{
+                    "properties":{
+                      "tissueTypeId":{
+                        "pattern":"^UBERON[:_][0-9]{7}$"
+                      }
+                    }
+                  }
+                },
+                {
+                  "if":{
+                    "required":[
+                      "tissueOntology"
+                    ],
+                    "properties":{
+                      "tissueOntology":{
+                        "required":[
+                          "name"
+                        ],
+                        "properties":{
+                          "name":{
+                            "const":"bto"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then":{
+                    "properties":{
+                      "tissueTypeId":{
+                        "pattern":"^BTO[:_][0-9]{7}$"
                       }
                     }
                   }
@@ -631,9 +683,11 @@
                   "properties":{
                     "name":{
                       "type":"string",
-                      "description":"Name of the tissue ontology. Use the BRENDA Tissue Ontology where possible, so that tissueTypeId values are comparable across submissions. If a different ontology is used, set 'other' and name it in nameOther.",
+                      "description":"Ontology from which tissueTypeId is taken. 'bto' BRENDA Tissue Ontology, 'uberon' Uberon anatomy ontology, 'snomed_ct' SNOMED CT body structures. These name anatomical structures; classifications of the disease rather than the tissue do not belong here. If another tissue ontology is used, set 'other' and name it in nameOther.",
                       "enum":[
-                        "BRENDA Tissue Ontology",
+                        "bto",
+                        "uberon",
+                        "snomed_ct",
                         "other"
                       ]
                     },
@@ -644,13 +698,13 @@
                     },
                     "version":{
                       "type":"string",
-                      "description":"Version of the tissue ontology"
+                      "description":"Version or release of the tissue ontology."
                     }
                   }
                 },
                 "tissueTypeId":{
                   "type":"string",
-                  "description":"Tissue ID according to the ontology in use."
+                  "description":"Identifier of the tissue in the ontology named by tissueOntology.name. Both the CURIE form (BTO:0000089) and the OBO form (BTO_0000089) are accepted for BTO and UBERON; SNOMED CT concept identifiers are given as plain numbers."
                 },
                 "tissueTypeName":{
                   "type":"string",
