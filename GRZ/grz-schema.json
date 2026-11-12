@@ -278,13 +278,28 @@
                 "libraryPrepKit",
                 "libraryPrepKitManufacturer",
                 "sequencerModel",
-                "sequencerManufacturer",
                 "kitName",
                 "kitManufacturer",
                 "enrichmentKitManufacturer",
                 "enrichmentKitDescription",
                 "barcode",
                 "sequencingLayout"
+              ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["sequencerModel"],
+                    "properties":{"sequencerModel":{"const":"other"}}
+                  },
+                  "then":{"required":["sequencerModelOther","sequencerManufacturer"]}
+                },
+                {
+                  "if":{
+                    "required":["sequencerManufacturer"],
+                    "properties":{"sequencerManufacturer":{"const":"other"}}
+                  },
+                  "then":{"required":["sequencerManufacturerOther"]}
+                }
               ],
               "properties":{
                 "labDataName":{
@@ -387,11 +402,104 @@
                 },
                 "sequencerModel":{
                   "type":"string",
-                  "description":"Name/version of the sequencer model"
+                  "description":"Model of the sequencing instrument. 'other': a model not on this list, which must then be named in sequencerModelOther; sequencerManufacturer is then required as well.",
+                  "enum":[
+                    "454_gs",
+                    "454_gs_20",
+                    "454_gs_flx",
+                    "454_gs_flx_titanium",
+                    "454_gs_flx+",
+                    "454_gs_junior",
+                    "ab_310_genetic_analyzer",
+                    "ab_3130_genetic_analyzer",
+                    "ab_3130xl_genetic_analyzer",
+                    "ab_3500_genetic_analyzer",
+                    "ab_3500xl_genetic_analyzer",
+                    "ab_3730_genetic_analyzer",
+                    "ab_3730xl_genetic_analyzer",
+                    "ab_5500_genetic_analyzer",
+                    "ab_5500xl_genetic_analyzer",
+                    "ab_5500xl-w_genetic_analysis_system",
+                    "bgiseq-50",
+                    "bgiseq-500",
+                    "dnbseq-g400",
+                    "dnbseq-g400_fast",
+                    "dnbseq-g50",
+                    "dnbseq-t7",
+                    "element_aviti",
+                    "gridion",
+                    "helicos_heliscope",
+                    "hiseq_x_five",
+                    "hiseq_x_ten",
+                    "illumina_genome_analyzer",
+                    "illumina_genome_analyzer_ii",
+                    "illumina_genome_analyzer_iix",
+                    "illumina_hiscansq",
+                    "illumina_hiseq_1000",
+                    "illumina_hiseq_1500",
+                    "illumina_hiseq_2000",
+                    "illumina_hiseq_2500",
+                    "illumina_hiseq_3000",
+                    "illumina_hiseq_4000",
+                    "illumina_hiseq_x",
+                    "illumina_miseq",
+                    "illumina_miniseq",
+                    "illumina_novaseq_6000",
+                    "illumina_novaseq_x",
+                    "illumina_novaseq_x_plus",
+                    "illumina_iseq_100",
+                    "illumina_iscan",
+                    "ion_genestudio_s5",
+                    "ion_genestudio_s5_plus",
+                    "ion_genestudio_s5_prime",
+                    "ion_torrent_genexus",
+                    "ion_torrent_pgm",
+                    "ion_torrent_proton",
+                    "ion_torrent_s5",
+                    "ion_torrent_s5_xl",
+                    "mgiseq-2000rs",
+                    "minion",
+                    "nextseq_1000",
+                    "nextseq_2000",
+                    "nextseq_500",
+                    "nextseq_550",
+                    "nextseq_550dx",
+                    "pacbio_rs",
+                    "pacbio_rs_ii",
+                    "promethion",
+                    "sequel",
+                    "sequel_ii",
+                    "sequel_iie",
+                    "revio",
+                    "ug_100",
+                    "other"
+                  ]
+                },
+                "sequencerModelOther":{
+                  "type":"string",
+                  "description":"Name of the sequencer model. Required if sequencerModel is 'other'.",
+                  "minLength":1
                 },
                 "sequencerManufacturer":{
                   "type":"string",
-                  "description":"Sequencer manufacturer"
+                  "description":"Manufacturer of the sequencing instrument. Optional, because it follows from sequencerModel; required if sequencerModel is 'other'. 'other': a manufacturer not on this list, which must then be named in sequencerManufacturerOther.",
+                  "enum":[
+                    "illumina",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "pacific_biosciences",
+                    "mgi",
+                    "element_biosciences",
+                    "ultima_genomics",
+                    "roche",
+                    "helicos",
+                    "other"
+                  ]
+                },
+                "sequencerManufacturerOther":{
+                  "type":"string",
+                  "description":"Name of the sequencer manufacturer. Required if sequencerManufacturer is 'other'.",
+                  "minLength":1
                 },
                 "kitName":{
                   "type":"string",
