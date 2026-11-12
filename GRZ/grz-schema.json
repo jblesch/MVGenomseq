@@ -407,7 +407,7 @@
                 },
                 "libraryPrepKit":{
                   "type":"string",
-                  "description":"Name/version of the library prepkit",
+                  "description":"Name of the kit used to construct the library, as free text. The field is deliberately not controlled: library preparation kits are released continuously and laboratories also use custom designs, so no closed list can hold them. Record the manufacturer in libraryPrepKitManufacturer, which is controlled, and give the kit name here as precisely as the supplier states it.",
                   "minLength":1
                 },
                 "libraryPrepKitManufacturer":{
@@ -420,7 +420,7 @@
                     "agilent",
                     "idt",
                     "qiagen",
-                    "oncodna",
+                    "roche",
                     "thermo_fisher",
                     "oxford_nanopore",
                     "watchmaker",
@@ -478,7 +478,7 @@
                     "agilent",
                     "idt",
                     "qiagen",
-                    "oncodna",
+                    "roche",
                     "thermo_fisher",
                     "oxford_nanopore",
                     "watchmaker",
@@ -495,7 +495,7 @@
                 },
                 "enrichmentKitDescription":{
                   "type":"string",
-                  "description":"Name/version of the enrichment kit. Required unless enrichmentKitManufacturer is 'none'; where no enrichment was performed, it can be omitted.",
+                  "description":"Name and version of the enrichment kit, as free text. Required whenever enrichmentKitManufacturer names a manufacturer, and to be omitted where it is 'none': the absence of enrichment is recorded once, by the manufacturer field, and does not need restating here.",
                   "minLength":1
                 },
                 "barcode":{
