@@ -273,6 +273,7 @@
                 "sampleConservation",
                 "sequenceType",
                 "sequenceSubtype",
+                "caseControlStatus",
                 "fragmentationMethod",
                 "libraryType",
                 "libraryPrepKit",
@@ -347,6 +348,15 @@
                     "germline",
                     "somatic",
                     "other",
+                    "unknown"
+                  ]
+                },
+                "caseControlStatus":{
+                  "type":"string",
+                  "description":"Whether this sample represents the disease under investigation. 'case': it does, i.e. a tumor sample, or, in submissions without a tumor sample, a sample from an affected donor. 'control': it does not, i.e. the matched normal sample of a tumor, or a sample from an unaffected donor. 'unknown': it is not known whether it does, e.g. a sample from a relative whose disease status is unknown. Tumor samples are always 'case'.",
+                  "enum":[
+                    "case",
+                    "control",
                     "unknown"
                   ]
                 },
