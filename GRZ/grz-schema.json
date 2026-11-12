@@ -286,6 +286,27 @@
                 "barcode",
                 "sequencingLayout"
               ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["sequenceData"],
+                    "properties":{
+                      "sequenceData":{
+                        "required":["files"],
+                        "properties":{
+                          "files":{
+                            "contains":{
+                              "required":["fileType"],
+                              "properties":{"fileType":{"const":"fastq"}}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then":{"required":["readStructure"]}
+                }
+              ],
               "properties":{
                 "labDataName":{
                   "type":"string",
@@ -419,8 +440,9 @@
                   "description":"Name/version of the enrichment kit"
                 },
                 "barcode":{
-                  "type":"string",
-                  "description":"The barcode used or 'na'"
+                  "type":["string","null"],
+                  "description":"The index sequence of the sample, in its forward writing: the writing the kit lists for the sample sheet, never its reverse complement. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value. A known sampleBarcode segment in readStructure repeats the corresponding part of this value.",
+                  "pattern":"^[ACGT]+(-[ACGT]+)?$"
                 },
                 "sequencingLayout":{
                   "type":"string",
@@ -431,6 +453,18 @@
                     "reverse",
                     "other"
                   ]
+                },
+                "readStructure":{
+                  "type":"object",
+                  "description":"The segments of each submitted read file. Each key is a readOrder of files[], and each value lists the segments of one record of that file, 5' to 3'. A segment is found by counting bases from the start of the record, never by matching a sequence: its position is the sum of the lengths of the segments before it. Required whenever a FASTQ file is submitted, optional with BAM. A submitted FASTQ holds every kit base in the read sequence. A UMI that exists only in the read name is not accepted. Adapter bases may be masked with N and must not be removed.",
+                  "additionalProperties":false,
+                  "minProperties":1,
+                  "properties":{
+                    "R1":{"$ref":"#/$defs/readLayout"},
+                    "R2":{"$ref":"#/$defs/readLayout"},
+                    "I1":{"$ref":"#/$defs/indexReadLayout"},
+                    "I2":{"$ref":"#/$defs/indexReadLayout"}
+                  }
                 },
                 "tumorCellCount":{
                   "type":"array",
@@ -613,13 +647,15 @@
                             "type":"string",
                             "enum":[
                               "R1",
-                              "R2"
+                              "R2",
+                              "I1",
+                              "I2"
                             ],
-                            "description":"Indicates the read order for paired-end reads."
+                            "description":"The read that the file holds: R1 and R2 for the data reads, I1 and I2 for the index reads. An index-read file is submitted only when the UMI was sequenced in its index cycles. A plain sample index is recorded in barcode, and its file is not submitted."
                           },
                           "readLength":{
                             "type":"integer",
-                            "description":"The read length; in the case of long-read sequencing it is the rounded average read length.",
+                            "description":"The read length: the number of bases per record, including the kit bases that readStructure declares. Where every segment of the layout has a fixed length, it equals their sum, and all files of that readOrder within one labData entry have the same readLength. In the case of long-read sequencing it is the rounded average read length.",
                             "minimum":0
                           },
                           "flowcellId":{
@@ -640,6 +676,109 @@
           }
         }
       }
+    }
+  },
+  "$defs":{
+    "readLayout":{
+      "type":"array",
+      "description":"The layout of a data read (R1 or R2): the segments of one record, 5' to 3'. It holds exactly one insert segment.",
+      "minItems":1,
+      "items":{"$ref":"#/$defs/readSegment"},
+      "contains":{
+        "required":["segmentType"],
+        "properties":{"segmentType":{"const":"insert"}}
+      }
+    },
+    "indexReadLayout":{
+      "type":"array",
+      "description":"The layout of an index read (I1 or I2): the segments of one record, 5' to 3'. It holds a umi segment and no insert segment.",
+      "minItems":1,
+      "items":{
+        "allOf":[{"$ref":"#/$defs/readSegment"}],
+        "properties":{"segmentType":{"enum":["umi","sampleBarcode","spacer"]}}
+      },
+      "contains":{
+        "required":["segmentType"],
+        "properties":{"segmentType":{"const":"umi"}}
+      }
+    },
+    "readSegment":{
+      "type":"object",
+      "description":"A run of consecutive bases in a record that all have the same segmentType. A segment has either a length, or a minLength and a maxLength.",
+      "additionalProperties":false,
+      "required":["segmentType","sequenceType"],
+      "properties":{
+        "segmentType":{
+          "description":"What the bases are. 'insert' is template. 'umi', 'sampleBarcode' and 'spacer' are kit bases, which the library kit added.",
+          "enum":["insert","umi","sampleBarcode","spacer"]
+        },
+        "length":{
+          "type":"integer",
+          "description":"The number of bases of the segment in every record. For a kit segment it is the number of cycles that the conversion assigns to it, for example 7 for U7 in OverrideCycles.",
+          "minimum":1
+        },
+        "minLength":{
+          "type":"integer",
+          "description":"The lower bound of a segment that varies in length, included. Allowed on an insert segment only, which is then the last segment of its layout. For platforms without a fixed cycle count, such as Ion Torrent.",
+          "minimum":0
+        },
+        "maxLength":{
+          "type":"integer",
+          "description":"The upper bound of a segment that varies in length, included. It is greater than minLength.",
+          "minimum":1
+        },
+        "sequenceType":{
+          "description":"'known': the bases come from the set in sequences, and the validator checks them against the data. 'random': they do not. An insert is always random.",
+          "enum":["known","random"]
+        },
+        "sequences":{
+          "type":"array",
+          "description":"The set that a known segment draws from, inline. A set of one entry is a fixed sequence. Every entry has the length of the segment. In a sampleBarcode segment, the entries repeat the corresponding part of barcode as stored there.",
+          "minItems":1,
+          "uniqueItems":true,
+          "items":{"type":"string","pattern":"^[ACGTN]+$"}
+        },
+        "reverseComplement":{
+          "type":"boolean",
+          "description":"true: the bases in the record are the reverse complement of the entries in sequences. false: they are the entries as written. There is no default."
+        }
+      },
+      "allOf":[
+        {
+          "oneOf":[
+            {
+              "required":["length"],
+              "properties":{"minLength":false,"maxLength":false}
+            },
+            {
+              "required":["minLength","maxLength"],
+              "properties":{"length":false}
+            }
+          ]
+        },
+        {
+          "if":{
+            "required":["sequenceType"],
+            "properties":{"sequenceType":{"const":"known"}}
+          },
+          "then":{"required":["sequences","reverseComplement"]}
+        },
+        {
+          "if":{
+            "required":["sequenceType"],
+            "properties":{"sequenceType":{"const":"random"}}
+          },
+          "then":{"properties":{"sequences":false,"reverseComplement":false}}
+        },
+        {
+          "if":{
+            "required":["segmentType"],
+            "properties":{"segmentType":{"const":"insert"}}
+          },
+          "then":{"properties":{"sequenceType":{"const":"random"}}},
+          "else":{"properties":{"minLength":false,"maxLength":false}}
+        }
+      ]
     }
   }
 }
