@@ -280,11 +280,39 @@
                 "sequencerModel",
                 "sequencerManufacturer",
                 "kitName",
-                "kitManufacturer",
                 "enrichmentKitManufacturer",
-                "enrichmentKitDescription",
                 "barcode",
                 "sequencingLayout"
+              ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["libraryPrepKitManufacturer"],
+                    "properties":{"libraryPrepKitManufacturer":{"const":"other"}}
+                  },
+                  "then":{"required":["libraryPrepKitManufacturerOther"]}
+                },
+                {
+                  "if":{
+                    "required":["kitManufacturer"],
+                    "properties":{"kitManufacturer":{"const":"other"}}
+                  },
+                  "then":{"required":["kitManufacturerOther"]}
+                },
+                {
+                  "if":{
+                    "required":["enrichmentKitManufacturer"],
+                    "properties":{"enrichmentKitManufacturer":{"const":"other"}}
+                  },
+                  "then":{"required":["enrichmentKitManufacturerOther"]}
+                },
+                {
+                  "if":{
+                    "required":["enrichmentKitManufacturer"],
+                    "properties":{"enrichmentKitManufacturer":{"not":{"const":"none"}}}
+                  },
+                  "then":{"required":["enrichmentKitDescription"]}
+                }
               ],
               "properties":{
                 "labDataName":{
@@ -379,11 +407,32 @@
                 },
                 "libraryPrepKit":{
                   "type":"string",
-                  "description":"Name/version of the library prepkit"
+                  "description":"Name/version of the library prepkit",
+                  "minLength":1
                 },
                 "libraryPrepKitManufacturer":{
                   "type":"string",
-                  "description":"Library prep kit manufacturer"
+                  "description":"Manufacturer of the library preparation kit. 'other': a manufacturer not on this list, which must then be named in libraryPrepKitManufacturerOther.",
+                  "enum":[
+                    "illumina",
+                    "twist",
+                    "neb",
+                    "agilent",
+                    "idt",
+                    "qiagen",
+                    "oncodna",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "watchmaker",
+                    "mgi",
+                    "pacific_biosciences",
+                    "other"
+                  ]
+                },
+                "libraryPrepKitManufacturerOther":{
+                  "type":"string",
+                  "description":"Name of the library preparation kit manufacturer. Required if libraryPrepKitManufacturer is 'other'.",
+                  "minLength":1
                 },
                 "sequencerModel":{
                   "type":"string",
@@ -399,24 +448,54 @@
                 },
                 "kitManufacturer":{
                   "type":"string",
-                  "description":"Sequencing kit manufacturer"
+                  "description":"Manufacturer of the sequencing kit. Optional, because sequencing reagents always come from the manufacturer of the sequencer. 'other': a manufacturer not on this list, which must then be named in kitManufacturerOther.",
+                  "enum":[
+                    "illumina",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "pacific_biosciences",
+                    "mgi",
+                    "element_biosciences",
+                    "ultima_genomics",
+                    "roche",
+                    "helicos",
+                    "other"
+                  ]
+                },
+                "kitManufacturerOther":{
+                  "type":"string",
+                  "description":"Name of the sequencing kit manufacturer. Required if kitManufacturer is 'other'.",
+                  "minLength":1
                 },
                 "enrichmentKitManufacturer":{
                   "type":"string",
-                  "description":"Manufacturer of the enrichment kit",
+                  "description":"Manufacturer of the enrichment kit. 'none': no enrichment was performed. 'other': a manufacturer not on this list, which must then be named in enrichmentKitManufacturerOther.",
                   "enum":[
-                    "Illumina",
-                    "Agilent",
-                    "Twist",
-                    "NEB",
+                    "illumina",
+                    "twist",
+                    "neb",
+                    "agilent",
+                    "idt",
+                    "qiagen",
+                    "oncodna",
+                    "thermo_fisher",
+                    "oxford_nanopore",
+                    "watchmaker",
+                    "mgi",
+                    "pacific_biosciences",
                     "other",
-                    "unknown",
                     "none"
                   ]
                 },
+                "enrichmentKitManufacturerOther":{
+                  "type":"string",
+                  "description":"Name of the enrichment kit manufacturer. Required if enrichmentKitManufacturer is 'other'.",
+                  "minLength":1
+                },
                 "enrichmentKitDescription":{
                   "type":"string",
-                  "description":"Name/version of the enrichment kit"
+                  "description":"Name/version of the enrichment kit. Required unless enrichmentKitManufacturer is 'none'; where no enrichment was performed, it can be omitted.",
+                  "minLength":1
                 },
                 "barcode":{
                   "type":"string",
