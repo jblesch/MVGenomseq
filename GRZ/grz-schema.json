@@ -323,11 +323,15 @@
                 },
                 "sampleConservation":{
                   "type":"string",
-                  "description":"Sample conservation",
+                  "description":"How the sample was stored before processing. 'refrigerator': stored at 2 to 5 °C. 'freezer': stored at -20 °C. 'ultra-low-freezer': stored at -80 °C. 'cryogenic-freezer': stored at -150 to -190 °C, e.g. in liquid nitrogen. 'ffpe': formalin-fixed and paraffin-embedded. 'none': not stored, processed fresh. 'fresh-tissue': kept for existing submissions and means the same as 'none'; use 'none' for new submissions. 'other': a storage method not covered by this list. 'unknown': the storage method is not known, e.g. because the sample was stored outside the sequencing lab.",
                   "enum":[
-                    "fresh-tissue",
-                    "cryo-frozen",
+                    "refrigerator",
+                    "freezer",
+                    "ultra-low-freezer",
+                    "cryogenic-freezer",
                     "ffpe",
+                    "none",
+                    "fresh-tissue",
                     "other",
                     "unknown"
                   ]
