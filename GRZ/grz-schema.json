@@ -261,23 +261,7 @@
           },
           "labData":{
             "type":"array",
-            "description":"Lab data related to the donor. At least one lab data entry of each donor must contain a VCF file. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is listed under each donor it covers.",
-            "contains":{
-              "required":["sequenceData"],
-              "properties":{
-                "sequenceData":{
-                  "required":["files"],
-                  "properties":{
-                    "files":{
-                      "contains":{
-                        "required":["fileType"],
-                        "properties":{"fileType":{"const":"vcf"}}
-                      }
-                    }
-                  }
-                }
-              }
-            },
+            "description":"Lab data related to the donor.",
             "items":{
               "type":"object",
               "required":[
@@ -573,7 +557,11 @@
                     },
                     "files":{
                       "type":"array",
-                      "description":"List of files generated and required in this analysis.",
+                      "description":"List of files generated and required in this analysis. Must contain at least one VCF file. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is listed in each lab data entry it covers.",
+                      "contains":{
+                        "required":["fileType"],
+                        "properties":{"fileType":{"const":"vcf"}}
+                      },
                       "items":{
                         "type":"object",
                         "required":[
