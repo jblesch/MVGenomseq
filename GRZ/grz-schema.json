@@ -261,7 +261,43 @@
           },
           "labData":{
             "type":"array",
-            "description":"Lab data related to the donor.",
+            "description":"Lab data related to the donor. If any BAM or FASTQ file is submitted for a donor, at least one VCF file must be submitted for the same donor. Where variants are called jointly, for example across a trio or a tumor/normal pair, the resulting VCF is listed under each donor it covers.",
+            "if":{
+              "contains":{
+              "required":["sequenceData"],
+              "properties":{
+                "sequenceData":{
+                  "required":["files"],
+                  "properties":{
+                    "files":{
+                      "contains":{
+                        "required":["fileType"],
+                        "properties":{"fileType":{"enum":["bam","fastq"]}}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            },
+            "then":{
+              "contains":{
+              "required":["sequenceData"],
+              "properties":{
+                "sequenceData":{
+                  "required":["files"],
+                  "properties":{
+                    "files":{
+                      "contains":{
+                        "required":["fileType"],
+                        "properties":{"fileType":{"const":"vcf"}}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            },
             "items":{
               "type":"object",
               "required":[
