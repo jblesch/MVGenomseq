@@ -128,6 +128,15 @@
           "researchConsents",
           "labData"
         ],
+        "allOf":[
+          {
+            "if":{
+              "required":["relation"],
+              "properties":{"relation":{"const":"other"}}
+            },
+            "then":{"required":["relationOther"]}
+          }
+        ],
         "properties":{
           "donorPseudonym":{
             "type":"string",
@@ -155,6 +164,11 @@
               "index",
               "other"
             ]
+          },
+          "relationOther":{
+            "type":"string",
+            "description":"Name of the relationship to the index patient. Required if relation is 'other'.",
+            "minLength":1
           },
           "mvConsent":{
             "type":"object",
@@ -286,6 +300,36 @@
                 "barcode",
                 "sequencingLayout"
               ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["sampleConservation"],
+                    "properties":{"sampleConservation":{"const":"other"}}
+                  },
+                  "then":{"required":["sampleConservationOther"]}
+                },
+                {
+                  "if":{
+                    "required":["fragmentationMethod"],
+                    "properties":{"fragmentationMethod":{"const":"other"}}
+                  },
+                  "then":{"required":["fragmentationMethodOther"]}
+                },
+                {
+                  "if":{
+                    "required":["libraryType"],
+                    "properties":{"libraryType":{"const":"other"}}
+                  },
+                  "then":{"required":["libraryTypeOther"]}
+                },
+                {
+                  "if":{
+                    "required":["sequencingLayout"],
+                    "properties":{"sequencingLayout":{"const":"other"}}
+                  },
+                  "then":{"required":["sequencingLayoutOther"]}
+                }
+              ],
               "properties":{
                 "labDataName":{
                   "type":"string",
@@ -332,6 +376,11 @@
                     "unknown"
                   ]
                 },
+                "sampleConservationOther":{
+                  "type":"string",
+                  "description":"Name of the sample conservation method. Required if sampleConservation is 'other'.",
+                  "minLength":1
+                },
                 "sequenceType":{
                   "type":"string",
                   "description":"Type of sequence (DNA or RNA)",
@@ -361,6 +410,11 @@
                     "unknown"
                   ]
                 },
+                "fragmentationMethodOther":{
+                  "type":"string",
+                  "description":"Name of the fragmentation method. Required if fragmentationMethod is 'other'.",
+                  "minLength":1
+                },
                 "libraryType":{
                   "type":"string",
                   "description":"Library type",
@@ -376,6 +430,11 @@
                     "other",
                     "unknown"
                   ]
+                },
+                "libraryTypeOther":{
+                  "type":"string",
+                  "description":"Name of the library type. Required if libraryType is 'other'.",
+                  "minLength":1
                 },
                 "libraryPrepKit":{
                   "type":"string",
@@ -432,6 +491,11 @@
                     "other"
                   ]
                 },
+                "sequencingLayoutOther":{
+                  "type":"string",
+                  "description":"Name of the sequencing layout. Required if sequencingLayout is 'other'.",
+                  "minLength":1
+                },
                 "tumorCellCount":{
                   "type":"array",
                   "description":"Tuple of tumor cell counts and how they were determined.",
@@ -440,6 +504,15 @@
                     "required":[
                       "count",
                       "method"
+                    ],
+                    "allOf":[
+                      {
+                        "if":{
+                          "required":["method"],
+                          "properties":{"method":{"const":"other"}}
+                        },
+                        "then":{"required":["methodOther"]}
+                      }
                     ],
                     "properties":{
                       "count":{
@@ -457,6 +530,11 @@
                           "other",
                           "unknown"
                         ]
+                      },
+                      "methodOther":{
+                        "type":"string",
+                        "description":"Name of the method used to determine the tumor cell count. Required if method is 'other'.",
+                        "minLength":1
                       }
                     }
                   }
