@@ -444,7 +444,8 @@
                 },
                 "kitName":{
                   "type":"string",
-                  "description":"Name/version of the sequencing kit"
+                  "description":"Name/version of the sequencing kit",
+                  "minLength":1
                 },
                 "kitManufacturer":{
                   "type":"string",
