@@ -668,13 +668,19 @@ def reverse_complement(seq):
 
 
 def positions(segments):
-    """Return (segment, start) pairs. Starts count from 0 at the 5' end."""
+    """Return (segment, start, stop) as slice bounds into a record.
+
+    Before the variable segment, the bounds count from the 5' end. Behind it,
+    they count from the 3' end as negative indices, so they fit every record.
+    """
     out, start = [], 0
-    for seg in segments:
-        out.append((seg, start))
-        if "length" not in seg:
-            break  # the variable segment is the last one
-        start += seg["length"]
+    for index, seg in enumerate(segments):
+        if "length" in seg:
+            stop = start + seg["length"]
+        else:  # the variable segment ends where the 3' part begins
+            stop = -sum(later["length"] for later in segments[index + 1:])
+        out.append((seg, start, stop or None))
+        start = stop
     return out
 
 
@@ -696,9 +702,6 @@ def check_layout(segments):
     for index, seg in enumerate(segments):
         if "length" in seg:
             continue
-        if index != len(segments) - 1:
-            errors.append("variable segment last: a segment follows the "
-                          "variable segment")
         if seg["minLength"] >= seg["maxLength"]:
             errors.append("minimum below maximum: minLength is not below "
                           "maxLength")
@@ -730,8 +733,9 @@ def segment_matches(bases, seg):
 def check_record_length(segments, sequences):
     """Return an error for the first record of a wrong length, else None."""
     fixed = sum(seg.get("length", 0) for seg in segments)
-    low = fixed + segments[-1].get("minLength", 0)
-    high = fixed + segments[-1].get("maxLength", 0)
+    variable = next((seg for seg in segments if "length" not in seg), {})
+    low = fixed + variable.get("minLength", 0)
+    high = fixed + variable.get("maxLength", 0)
     declared = str(low) if low == high else f"{low} to {high}"
     for number, seq in enumerate(sequences, start=1):
         if not low <= len(seq) <= high:
@@ -743,11 +747,10 @@ def check_record_length(segments, sequences):
 def check_known_sequences(segments, sample):
     """Return one error per known segment that matches in under 95 percent."""
     errors = []
-    for index, (seg, start) in enumerate(positions(segments)):
-        if seg["sequenceType"] != "known" or "length" not in seg or not sample:
+    for index, (seg, start, stop) in enumerate(positions(segments)):
+        if seg["sequenceType"] != "known" or not sample:
             continue
-        end = start + seg["length"]
-        hits = sum(segment_matches(seq[start:end], seg) for seq in sample)
+        hits = sum(segment_matches(seq[start:stop], seg) for seq in sample)
         rate = hits / len(sample)
         if rate < 0.95:
             errors.append(
@@ -760,18 +763,18 @@ def check_known_sequences(segments, sample):
 def check_umi_composition(segments, sample):
     """Return one warning per degenerate position of a random UMI."""
     warnings = []
-    for index, (seg, start) in enumerate(positions(segments)):
-        if (seg["segmentType"] != "umi" or seg["sequenceType"] != "random"
-                or "length" not in seg or not sample):
+    for index, (seg, start, stop) in enumerate(positions(segments)):
+        if seg["segmentType"] != "umi" or seg["sequenceType"] != "random" or not sample:
             continue
-        for position in range(start, start + seg["length"]):
-            counts = Counter(seq[position] for seq in sample if len(seq) > position)
+        cut = [seq[start:stop] for seq in sample]
+        for offset in range(seg["length"]):
+            counts = Counter(bases[offset] for bases in cut if len(bases) > offset)
             if not counts:
                 continue
             base, count = counts.most_common(1)[0]
             if count / len(sample) > 0.90:
                 warnings.append(
-                    f"UMI composition: segment {index}, position {position}: "
+                    f"UMI composition: segment {index}, base {offset + 1}: "
                     f"{base} in {count / len(sample):.1%} of {len(sample)} records"
                 )
     return warnings
@@ -791,6 +794,8 @@ FGBIO_LETTER = {"insert": "T", "umi": "M", "sampleBarcode": "S", "spacer": "S"}
 
 def fgbio_read_structure(segments):
     """One fgbio read structure for one layout, for example 3M2S146T."""
+    if any("length" not in seg for seg in segments[:-1]):
+        raise ValueError("fgbio allows a variable segment only at the end")
     return "".join(
         f"{seg.get('length', '+')}{FGBIO_LETTER[seg['segmentType']]}"
         for seg in segments
@@ -839,7 +844,7 @@ warnings = check_umi_composition(segments, sample)
 
 Every parameter below is derived from `readStructure`. Nothing is read from the file to decide it.
 
-**fgbio read structures.** One string per submitted file, in the order of the files. `insert` maps to `T` and `umi` to `M`. `sampleBarcode` and `spacer` both map to `S`, which skips the bases. A variable segment maps to `+`.
+**fgbio read structures.** One string per submitted file, in the order of the files. `insert` maps to `T` and `umi` to `M`. `sampleBarcode` and `spacer` both map to `S`, which skips the bases. A variable segment maps to `+`. fgbio allows `+` only in the last segment, so a layout with segments behind its variable segment needs another extraction step.
 
 | Example | Files | Read structures |
 |---|---|---|
@@ -917,6 +922,14 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | 12 bases | Record length | error, below 13 |
 | 613 bases | Record length | error, above 612 |
 
+**Counting from the 3' end.** The layout is `umi` 4 `random`, then `insert` `random` with `minLength` 1 and `maxLength` 600, then `umi` 4 `random`, then `spacer` 3 `known` with the entry `ACG`. `positions` gives the slices `[0:4]`, `[4:-7]`, `[-7:-3]` and `[-3:]`.
+
+| Record | Check | Expected |
+|---|---|---|
+| `GCTAGATTACACCGGACG` | Known sequence | match, the spacer is the last 3 bases |
+| `GCTAGATTACAGGCCGGACG` | Known sequence | match, a longer insert moves the spacer, and counting from the 3' end follows it |
+| `GCTAGATTACACCGGACGT` | Known sequence | no match, one base of read-through behind the spacer shifts the 3' part |
+
 **Matching one segment.** These rows test the known sequence check on the bases of one segment.
 
 | Bases in the record | Entry in `sequences` | `reverseComplement` | Expected |
@@ -934,7 +947,6 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | `umi` 4 `random`, `umi` 4 `random`, `insert` 143 | Neighbouring segments differ | error |
 | `insert` 100, `umi` 8 `random`, `sampleBarcode` 10 `known`, `sampleBarcode` 10 `known` | Neighbouring segments differ | pass, two `known` segments may follow each other |
 | `insert` 50, `spacer` 1 `known`, `insert` 99 | One insert per layout | error |
-| `insert` 1 to 600, then `umi` 8 `random` | Variable segment last | error |
 | `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | error |
 | `umi` 7 `known` with the entry `TTGCAA`, then `insert` 143 | Entry length | error, the 6-mer lacks the `T` that follows it |
 

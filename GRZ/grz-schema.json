@@ -715,7 +715,7 @@
         },
         "minLength":{
           "type":"integer",
-          "description":"The lower bound of a segment that varies in length, included. Allowed on an insert segment only, which is then the last segment of its layout. For platforms without a fixed cycle count, such as Ion Torrent.",
+          "description":"The lower bound of a segment that varies in length, included. Allowed on an insert segment only, and only for platforms without a fixed cycle count. Segments behind it count from the 3' end.",
           "minimum":0
         },
         "maxLength":{

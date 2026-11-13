@@ -151,7 +151,7 @@ No position is declared. It follows from the order of the segments and their len
 
 - The first segment has position 0.
 - Each further segment has the position of the segment before it plus that segment's `length`.
-- A segment with `minLength` and `maxLength` ends at the end of the record.
+- Behind a segment with `minLength` and `maxLength`, positions count from the 3' end: the last segment ends at the last base of the record. The variable segment covers the bases in between.
 
 A segment is found by counting bases, never by matching a sequence. The GRZ MUST NOT search a record for a sequence to decide where a segment starts or ends. Only the known sequence check reads `sequences`.
 
@@ -172,7 +172,6 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | Check | What it tests | Result |
 |---|---|---|
 | **Layouts match files** | where `readStructure` is given: every `readOrder` among the read files of the `labData` entry has a layout in `readStructure`, and every layout has a read file with that `readOrder`. Where the read files carry no `readOrder`, as with a long-read BAM, the only key is `R1` | error |
-| **Variable segment last** | a segment with `minLength` and `maxLength` is the last segment of its layout | error |
 | **Minimum below maximum** | `minLength` is less than `maxLength` | error |
 | **One insert per layout** | no layout holds more than one `insert` segment | error |
 | **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | error |
@@ -181,7 +180,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | **Entry length** | every entry in `sequences` has the segment's `length` | error |
 | **One cycle count per entry** | the requirement of the same name in section 2 | error |
 
-The checks from "Variable segment last" to "Neighbouring segments differ" make a layout cut each record in exactly one way. Two variable segments would not: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. Two neighbouring `random` segments of one type would describe the bases of one segment, but give another UMI tag: `ACGT-ACGT` instead of `ACGTACGT`. Two neighbouring `known` segments of one type are allowed, because two barcodes are two values.
+The checks from "Minimum below maximum" to "Neighbouring segments differ" make a layout cut each record in exactly one way. A layout holds at most one variable segment, because only an `insert` may vary. Two would not cut uniquely: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. Two neighbouring `random` segments of one type would describe the bases of one segment, but give another UMI tag: `ACGT-ACGT` instead of `ACGTACGT`. Two neighbouring `known` segments of one type are allowed, because two barcodes are two values.
 
 ### Data checks
 
@@ -217,7 +216,7 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 ## 8. Open points
 
 - A BAM submission with a UMI in `RX` tags and no `readStructure` records UMI usage nowhere.
-- A long-read library with a UMI at both ends of a variable insert cannot be declared.
+- Whether reads of platforms without a fixed cycle count end at a constant position relative to the molecule. Counting from the 3' end needs that, for example for a UMI at both ends of a long read.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
