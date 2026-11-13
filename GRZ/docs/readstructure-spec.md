@@ -1,6 +1,6 @@
 # `readStructure` specification
 
-*Normative text for the field `labData.readStructure` in `grz-schema.json` 2.0.0. Status: draft, 2026-11-12. Key words MUST, MUST NOT, SHOULD and MAY as in RFC 2119.*
+*Key words MUST, MUST NOT, SHOULD and MAY as in RFC 2119.*
 
 **tl;dr**
 
@@ -9,8 +9,6 @@
 - `readStructure` is required whenever a FASTQ file is submitted, and optional with BAM.
 - A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked and must not be removed.
 - A `known` segment is checked against the data, and a mismatch is an error.
-
-This file states the rules, independent of any software. Worked examples, settings for specific software, and reference code are in `readstructure-implementation-guide.md`.
 
 ## 1. Terms
 
@@ -38,7 +36,7 @@ Short reads are submitted as FASTQ, and long reads as BAM, as "QS durch GRZ MVGe
 | **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. |
 | **Index-read files complete** | Index-read files (`readOrder` `I1` and `I2`) MUST be submitted when the UMI was sequenced in index cycles, and MAY be submitted otherwise. Where any index-read file is submitted, every index read of the run MUST be submitted. |
 | **One cycle count per entry** | With a fixed layout, all files of that `readOrder` within one `labData` entry MUST have the same `readLength`. Runs with different cycle counts go into separate `labData` entries. |
-| **Read name is not read** | No requirement and no check in this specification reads the read name or the read comment. |
+| **Read name is not read** | The read name and the read comment MAY hold anything. No check reads them. |
 
 ## 3. Schema
 
@@ -225,6 +223,6 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
 - Whether the record sample should be the first 10,000 records or records spread over the file.
-- The key for single-end submissions. It is `R1` today because `files[].readOrder` offers nothing else.
+- Whether single-end submissions keep the key `R1`.
 - The entries and the number of the nonrandom UMI sets, and whether a vendor's set may be copied into a submission.
 - The switch-over date for UMI libraries whose existing files hold the UMI only in the read name.

@@ -1,7 +1,5 @@
 # `readStructure` implementation guide
 
-*Informative companion to `readstructure-spec.md`. Status: draft, 2026-11-12. Where this guide and the specification differ, the specification wins.*
-
 **tl;dr**
 
 - **A library without a UMI:** copy the example "WGS without UMI" and set `length` to your cycle count.
@@ -9,8 +7,6 @@
 - **Adapters:** mask them, do not trim them.
 - **barcode:** write `null` where the library has no index or the sequence is not known. `na` is not accepted.
 - **GRZ side:** run the checks in three steps, then derive the fgbio read structures and the DRAGEN options from the declaration.
-
-The guide has two parts. The first is for the submitting laboratory. The second is for whoever implements validation and extraction at the GRZ. Requirements and checks are called by the names the specification gives them.
 
 ## Contents
 
@@ -49,7 +45,7 @@ The guide has two parts. The first is for the submitting laboratory. The second 
 
 Every case also needs `AdapterBehavior,mask` where the sample sheet names an adapter; see [Conversion settings](#conversion-settings).
 
-Every Illumina example names a real kit and the `OverrideCycles` that Illumina documents for it. Another kit with the same `OverrideCycles` uses the same example.
+A kit with the same `OverrideCycles` as an example uses that example.
 
 You set `readStructure` once per library kit and `OverrideCycles`. Every submission with that combination carries the same value. Only a `sampleBarcode` segment changes per sample.
 
@@ -152,7 +148,7 @@ Data that was already converted with `TrimUMI,1` has to be converted again from 
 
 `readStructure` has one key per submitted read file. The key is the `readOrder` of the file, and the value lists the segments of one record, 5' to 3'.
 
-Each example shows the fields that `readStructure` depends on. The `labData` excerpts are shortened, and the full paths are those of `grz-schema.json`.
+In the examples, `files` stands for `sequenceData.files`, and other `labData` fields are left out.
 
 ### WGS without UMI
 
@@ -272,7 +268,7 @@ The two sequences below are placeholders. The first stands for a 7-mer, the seco
 }
 ```
 
-Every entry has exactly the `length` of the segment. The entries of the vendor sets are still to be confirmed; see the open points of the specification.
+Every entry has exactly the `length` of the segment.
 
 ### UMI behind the index
 
@@ -646,7 +642,7 @@ Extraction runs only after all three steps passed without an error.
 
 ## Reference code
 
-Python, standard library only. The code shows the rejection of duplicate keys, the metadata checks that look at one layout, and the three data checks, all as the specification states them. It also shows how a pipeline finds the sample barcode. It is written to be read, not to be fast.
+Python, standard library only: the rejection of duplicate keys, the metadata checks that look at one layout, the three data checks, and the sample barcode.
 
 ```python
 import gzip
@@ -880,9 +876,7 @@ The pipeline does not take the sample barcode from the read bases. The file is a
 
 DRAGEN names no library type for a single-ended nonrandom UMI. The function raises an error for that case. The GRZ treats every dual UMI as duplex-capable, as DRAGEN does.
 
-The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-sequence-position-r1` and `--umi-sequence-position-r2` for a UMI that is still in the read sequence. The value is the UMI length, or a string such as `U7N1` where a spacer follows the UMI. For "Inline UMI" that gives `3`, and for "Inline UMI with dark bases" it gives `U3N2`. This mapping is taken from the documentation and still has to be run once on real data.
-
-For a UMI in an index-read file, as in the examples "UMI behind the index" and "UMI in the second index read", this guide gives no DRAGEN options yet.
+The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-sequence-position-r1` and `--umi-sequence-position-r2` for a UMI that is still in the read sequence. The value is the UMI length, or a string such as `U7N1` where a spacer follows the UMI. For "Inline UMI" that gives `3`, and for "Inline UMI with dark bases" it gives `U3N2`. This mapping has not been tested on real data.
 
 ## Test vectors
 
