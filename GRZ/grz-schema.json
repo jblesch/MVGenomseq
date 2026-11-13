@@ -733,7 +733,7 @@
           "description":"The set that a known segment draws from, inline. A set of one entry is a fixed sequence. Every entry has the length of the segment. A sampleBarcode segment holds one entry: its index in forward orientation.",
           "minItems":1,
           "uniqueItems":true,
-          "items":{"type":"string","pattern":"^[ACGTN]+$"}
+          "items":{"type":"string","pattern":"^[ACGT]+$"}
         },
         "reverseComplement":{
           "type":"boolean",

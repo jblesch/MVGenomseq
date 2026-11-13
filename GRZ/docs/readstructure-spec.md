@@ -99,7 +99,7 @@ These requirements apply to BAM.
         "type": "array",
         "minItems": 1,
         "uniqueItems": true,
-        "items": { "type": "string", "pattern": "^[ACGTN]+$" }
+        "items": { "type": "string", "pattern": "^[ACGT]+$" }
       },
       "reverseComplement": { "type": "boolean" }
     },
@@ -226,4 +226,3 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 - Whether reads of platforms without a fixed cycle count end at a constant position relative to the molecule. Counting from the 3' end needs that, for example for a UMI at both ends of a long read.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence. Ion Torrent tag sequencing moves the tags into the BAM tags `ZT` and `YT`, so its FASTQ files lack them.
-- Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
