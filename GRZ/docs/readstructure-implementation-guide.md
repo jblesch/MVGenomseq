@@ -631,7 +631,7 @@ zcat sample_R1.fastq.gz \
 | Layouts match files | a read file has no layout, or a layout has no file | add the missing layout, or remove the layout of a file you do not submit |
 | One insert per layout | a layout has two `insert` segments | declare the template of one file as one `insert` segment |
 | Neighbouring segments differ (warning) | two `random` segments of the same type follow each other | where the kit adds one UMI or one spacer there, merge them into one segment with the summed `length` |
-| Minimum below maximum | `minLength` is above `maxLength`. A warning where the two are equal | swap the bounds. Where they are equal, write one `length` |
+| Minimum at most maximum | `minLength` is above `maxLength` | swap the bounds |
 | Length sum | the lengths in a layout do not sum to `readLength` | recount. An `N` cycle is not in the file and has no segment |
 | Entry length | an entry of `sequences` does not have `length` bases | enter every entry with exactly `length` bases. Enter a 6-mer of a 7-cycle UMI together with the base that follows it |
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
@@ -718,10 +718,7 @@ def check_layout(segments):
         if "length" in seg:
             continue
         if seg["minLength"] > seg["maxLength"]:
-            errors.append("minimum below maximum: minLength is above maxLength")
-        elif seg["minLength"] == seg["maxLength"]:
-            warnings.append("minimum below maximum: minLength equals maxLength, "
-                            "so one length would do")
+            errors.append("minimum at most maximum: minLength is above maxLength")
     return errors, warnings
 
 
@@ -964,8 +961,8 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | `umi` 4 `random`, `umi` 4 `random`, `insert` 143 | Neighbouring segments differ | warning |
 | `insert` 100, `umi` 8 `random`, `sampleBarcode` 10 `known`, `sampleBarcode` 10 `known` | Neighbouring segments differ | pass, two `known` segments may follow each other |
 | `insert` 50, `spacer` 1 `known`, `insert` 99 | One insert per layout | error |
-| `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | warning |
-| `insert` with `minLength` 200 and `maxLength` 100 | Minimum below maximum | error |
+| `insert` with `minLength` 151 and `maxLength` 151 | Minimum at most maximum | pass, a fixed length |
+| `insert` with `minLength` 200 and `maxLength` 100 | Minimum at most maximum | error |
 | `umi` 7 `known` with the entry `TTGCAA`, then `insert` 143 | Entry length | error, the 6-mer lacks the `T` that follows it |
 
 **Sample barcode.** These rows test the function `sample_barcode`.

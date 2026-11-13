@@ -181,7 +181,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | Check | What it tests | Result |
 |---|---|---|
 | **Layouts match files** | every `readOrder` among the FASTQ files of the `labData` entry has a layout in `readStructure`, and every layout has a FASTQ file with that `readOrder`. Where the FASTQ files carry no `readOrder`, as with long reads, the only key is `R1` | error |
-| **Minimum below maximum** | `minLength` is less than `maxLength` | error where `minLength` is above `maxLength`, warning where they are equal |
+| **Minimum at most maximum** | `minLength` is at most `maxLength` | error |
 | **One insert per layout** | no layout holds more than one `insert` segment | error |
 | **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | warning |
 | **Length sum** | in a fixed layout, the lengths sum to `files[].readLength` for that `readOrder` | error |
@@ -189,7 +189,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | **Entry length** | every entry in `sequences` has the segment's `length` | error |
 | **One cycle count per entry** | the requirement of the same name in section 2 | error |
 
-A layout cuts each record in exactly one way, because it holds at most one variable segment: only an `insert` may vary, and a layout holds one `insert`. Two variable segments would not cut uniquely: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. The two warnings flag a declaration that has a shorter form: `minLength` equal to `maxLength` is a `length`, and two neighbouring `random` segments of one type could be one segment.
+A layout cuts each record in exactly one way, because it holds at most one variable segment: only an `insert` may vary, and a layout holds one `insert`. Two variable segments would not cut uniquely: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. The warning flags a declaration that has a shorter form: two neighbouring `random` segments of one type could be one segment.
 
 ### Data checks
 
