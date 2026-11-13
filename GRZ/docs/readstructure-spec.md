@@ -206,7 +206,6 @@ A layout cuts each record in exactly one way, because it holds at most one varia
 3. The comparison is by Hamming distance. Insertions and deletions are not allowed.
 4. A segment shorter than 6 bases matches at distance 0 only. A segment of 6 bases or more matches at distance 0 or 1.
 5. An `N` in the record counts as a mismatch.
-6. The record matches when at least one entry matches.
 
 ## 7. Derived values
 
