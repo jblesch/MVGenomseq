@@ -181,15 +181,15 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | Check | What it tests | Result |
 |---|---|---|
 | **Layouts match files** | every `readOrder` among the FASTQ files of the `labData` entry has a layout in `readStructure`, and every layout has a FASTQ file with that `readOrder`. Where the FASTQ files carry no `readOrder`, as with long reads, the only key is `R1` | error |
-| **Minimum below maximum** | `minLength` is less than `maxLength` | error |
+| **Minimum below maximum** | `minLength` is less than `maxLength` | error where `minLength` is above `maxLength`, warning where they are equal |
 | **One insert per layout** | no layout holds more than one `insert` segment | error |
-| **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | error |
+| **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | warning |
 | **Length sum** | in a fixed layout, the lengths sum to `files[].readLength` for that `readOrder` | error |
 | **Length range** | in a layout with a variable segment: the fixed lengths plus `minLength` is at most `files[].readLength`, and `files[].readLength` is at most the fixed lengths plus `maxLength` | error |
 | **Entry length** | every entry in `sequences` has the segment's `length` | error |
 | **One cycle count per entry** | the requirement of the same name in section 2 | error |
 
-The checks from "Minimum below maximum" to "Neighbouring segments differ" make a layout cut each record in exactly one way. A layout holds at most one variable segment, because only an `insert` may vary. Two would not cut uniquely: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. Two neighbouring `random` segments of one type would describe the bases of one segment, but give another UMI tag: `ACGT-ACGT` instead of `ACGTACGT`. Two neighbouring `known` segments of one type are allowed, because two barcodes are two values.
+A layout cuts each record in exactly one way, because it holds at most one variable segment: only an `insert` may vary, and a layout holds one `insert`. Two variable segments would not cut uniquely: with `umi` 6 to 7 and `insert` 100 to 150, a record of 107 bases is 6 + 101 or 7 + 100. The two warnings flag a declaration that has a shorter form: `minLength` equal to `maxLength` is a `length`, and two neighbouring `random` segments of one type could be one segment.
 
 ### Data checks
 
@@ -220,7 +220,7 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 | duplex | the GRZ treats every dual UMI as duplex-capable. Whether the chemistry of a kit is duplex is not declared |
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
-| UMI tag | FASTQ: written at the GRZ by cutting each `umi` segment at its position. BAM: the `RX` tag |
+| UMI tag | FASTQ: written at the GRZ by cutting each `umi` segment at its position. Each `umi` segment is one UMI, and several are joined with `-`, 5' first. BAM: the `RX` tag |
 | sample barcode | the entries of the `sampleBarcode` segments, in the order `R1`, `R2`, `I1`, `I2` and 5' to 3' within a layout, joined with `-`. Without such a segment, `labData.barcode`. `sampleBarcode` and `spacer` bases are cut and discarded |
 
 ## 8. Open points

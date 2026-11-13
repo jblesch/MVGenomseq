@@ -69,10 +69,10 @@ Three rules follow from the table.
 - The lengths of one layout sum to the `readLength` of that file. `U7N1Y143` gives 150, not 151.
 - A layout lists segments in the order of the bases in the record, 5' to 3'.
 
-Two more rules keep a declaration unambiguous.
+Two more rules apply to every layout.
 
 - A layout for R1 or R2 has exactly one `insert` segment. A layout for I1 or I2 has none.
-- Do not split a segment. A 7 base UMI is one `umi` segment of `length` 7, not two segments of 3 and 4.
+- Declare one `umi` segment per UMI of the kit. A 7 base UMI is one `umi` segment of `length` 7, not two segments of 3 and 4, because each `umi` segment counts as one UMI.
 
 Where a submitted file holds the barcode, a `sampleBarcode` segment declares it. That segment is always `known`, and its one entry is the index. `labData.barcode` may repeat the value, or be `null`. Where no submitted file holds the barcode, `labData.barcode` holds it:
 
@@ -630,7 +630,8 @@ zcat sample_R1.fastq.gz \
 |---|---|---|
 | Layouts match files | a read file has no layout, or a layout has no file | add the missing layout, or remove the layout of a file you do not submit |
 | One insert per layout | a layout has two `insert` segments | declare the template of one file as one `insert` segment |
-| Neighbouring segments differ | two `random` segments of the same type follow each other | merge them into one segment with the summed `length` |
+| Neighbouring segments differ (warning) | two `random` segments of the same type follow each other | where the kit adds one UMI or one spacer there, merge them into one segment with the summed `length` |
+| Minimum below maximum | `minLength` is above `maxLength`. A warning where the two are equal | swap the bounds. Where they are equal, write one `length` |
 | Length sum | the lengths in a layout do not sum to `readLength` | recount. An `N` cycle is not in the file and has no segment |
 | Entry length | an entry of `sequences` does not have `length` bases | enter every entry with exactly `length` bases. Enter a 6-mer of a 7-cycle UMI together with the base that follows it |
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
@@ -699,27 +700,29 @@ def positions(segments):
 
 
 def check_layout(segments):
-    """Return the errors of the metadata checks that look at one layout."""
-    errors = []
+    """Return the errors and the warnings of the metadata checks on one layout."""
+    errors, warnings = [], []
     if sum(seg["segmentType"] == "insert" for seg in segments) > 1:
         errors.append("one insert per layout: more than one insert segment")
     for left, right in zip(segments, segments[1:]):
         if (left["segmentType"] == right["segmentType"]
                 and left["sequenceType"] == right["sequenceType"] == "random"):
-            errors.append("neighbouring segments differ: two random "
-                          f"{left['segmentType']} segments follow each other")
+            warnings.append("neighbouring segments differ: two random "
+                            f"{left['segmentType']} segments follow each other")
     for index, seg in enumerate(segments):
         for entry in seg.get("sequences", []):
             if len(entry) != seg["length"]:
                 errors.append(f"entry length: segment {index} has the entry {entry} "
                               f"of {len(entry)} bases, declared {seg['length']}")
-    for index, seg in enumerate(segments):
+    for seg in segments:
         if "length" in seg:
             continue
-        if seg["minLength"] >= seg["maxLength"]:
-            errors.append("minimum below maximum: minLength is not below "
-                          "maxLength")
-    return errors
+        if seg["minLength"] > seg["maxLength"]:
+            errors.append("minimum below maximum: minLength is above maxLength")
+        elif seg["minLength"] == seg["maxLength"]:
+            warnings.append("minimum below maximum: minLength equals maxLength, "
+                            "so one length would do")
+    return errors, warnings
 
 
 def read_sequences(path, limit=None):
@@ -846,7 +849,7 @@ fastq = lab_data["sequenceData"]["files"][0]       # one FASTQ file of that entr
 path = fastq["filePath"]                           # relative to the files directory
 
 segments = lab_data["readStructure"][fastq.get("readOrder", "R1")]
-layout_errors = check_layout(segments)   # needs no file
+layout_errors, layout_warnings = check_layout(segments)   # needs no file
 
 error = check_record_length(segments, read_sequences(path))   # every record
 sample = list(read_sequences(path, SAMPLE))                   # first 10,000 records
@@ -958,10 +961,11 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 
 | Layout | Check | Expected |
 |---|---|---|
-| `umi` 4 `random`, `umi` 4 `random`, `insert` 143 | Neighbouring segments differ | error |
+| `umi` 4 `random`, `umi` 4 `random`, `insert` 143 | Neighbouring segments differ | warning |
 | `insert` 100, `umi` 8 `random`, `sampleBarcode` 10 `known`, `sampleBarcode` 10 `known` | Neighbouring segments differ | pass, two `known` segments may follow each other |
 | `insert` 50, `spacer` 1 `known`, `insert` 99 | One insert per layout | error |
-| `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | error |
+| `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | warning |
+| `insert` with `minLength` 200 and `maxLength` 100 | Minimum below maximum | error |
 | `umi` 7 `known` with the entry `TTGCAA`, then `insert` 143 | Entry length | error, the 6-mer lacks the `T` that follows it |
 
 **Sample barcode.** These rows test the function `sample_barcode`.
