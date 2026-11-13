@@ -6,8 +6,9 @@
 
 - `readStructure` is an object. Each key is a `readOrder`, and each value lists the segments of one record in 5' to 3' order.
 - Segments are found by counting bases from the start of the record, never by matching a sequence.
-- `readStructure` is required whenever a FASTQ file is submitted, and optional with BAM.
+- `readStructure` is required whenever a FASTQ file is submitted, and absent otherwise.
 - A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked and must not be removed.
+- A submitted BAM holds only the insert in its read sequence. A UMI sits in the `RX` tag.
 - A `known` segment is checked against the data, and a mismatch is an error.
 
 ## 1. Terms
@@ -15,7 +16,6 @@
 | Term | Meaning |
 |---|---|
 | record | one read in a FASTQ file: name line, read sequence, separator, quality scores |
-| read file | an entry of `files[]` with `fileType` `fastq` or `bam` |
 | kit base | a base that the library kit added at the same position in every record of a file: UMI, sample barcode or spacer |
 | segment | a run of consecutive bases in a record that all have the same `segmentType` |
 | layout | the ordered list of segments for one `readOrder` |
@@ -27,7 +27,9 @@
 
 ## 2. Requirements on submitted files
 
-Short reads are submitted as FASTQ, and long reads as BAM, as "QS durch GRZ MVGenomSeq" (version 01.4, Tabellen 2 und 3) assumes. These requirements apply to FASTQ.
+Short reads are submitted as FASTQ. Long reads are submitted as BAM or FASTQ.
+
+These requirements apply to FASTQ.
 
 | Requirement | Text |
 |---|---|
@@ -37,6 +39,13 @@ Short reads are submitted as FASTQ, and long reads as BAM, as "QS durch GRZ MVGe
 | **Index-read files complete** | Index-read files (`readOrder` `I1` and `I2`) MUST be submitted when the UMI was sequenced in index cycles, and MAY be submitted otherwise. Where any index-read file is submitted, every index read of the run MUST be submitted. |
 | **One cycle count per entry** | With a fixed layout, all files of that `readOrder` within one `labData` entry MUST have the same `readLength`. Runs with different cycle counts go into separate `labData` entries. |
 | **Read name is not read** | The read name and the read comment MAY hold anything. No check reads them. |
+
+These requirements apply to BAM.
+
+| Requirement | Text |
+|---|---|
+| **Insert only** | The read sequence MUST hold only the insert. Kit bases MUST NOT remain in it. |
+| **UMI in RX** | Where the library has a UMI, every record MUST carry it in the `RX` tag. Several UMIs of one record are joined with `-`, 5' first. Their base qualities SHOULD sit in `QX`. A UMI in another tag, such as `ZT` or `YT`, MUST be moved to `RX`. |
 
 ## 3. Schema
 
@@ -122,14 +131,14 @@ Short reads are submitted as FASTQ, and long reads as BAM, as "QS durch GRZ MVGe
 
 Two rules complete the schema.
 
-- **One conditional on the `labData` item.** Where any `files[].fileType` is `fastq`, `readStructure` is required. Its JSON encoding is in `grz-schema.json`.
+- **One conditional on the `labData` item.** Where any `files[].fileType` is `fastq`, `readStructure` is required. Otherwise it is absent. Its JSON encoding is in `grz-schema.json`.
 - **Duplicate keys.** Many JSON parsers keep the last of two equal keys without a message. A validator MUST reject a metadata file in which a key of `readStructure` appears twice.
 
 ## 4. Field semantics
 
 | Field | Meaning |
 |---|---|
-| key `R1`, `R2`, `I1` or `I2` | the `readOrder` of the read file that the layout describes |
+| key `R1`, `R2`, `I1` or `I2` | the `readOrder` of the FASTQ file that the layout describes |
 | layout, the value of a key | the segments of one record, listed 5' to 3' in the order they appear in the record |
 | `segmentType` | `umi`, `sampleBarcode` and `spacer` hold kit bases. `insert` holds all other bases |
 | `length` | the segment has this number of bases in every record |
@@ -163,7 +172,7 @@ The checks run in three steps. Each step needs more than the one before it.
 
 - **Schema checks** need the metadata file only. They are the schema of section 3.
 - **Metadata checks** compare fields of one submission with each other. They read no file.
-- **Data checks** read the FASTQ files.
+- **Data checks** read the submitted files.
 
 A submission with an error MUST be rejected. A warning is reported and does not reject the submission. No extraction runs on a submission that has an error.
 
@@ -171,7 +180,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 
 | Check | What it tests | Result |
 |---|---|---|
-| **Layouts match files** | where `readStructure` is given: every `readOrder` among the read files of the `labData` entry has a layout in `readStructure`, and every layout has a read file with that `readOrder`. Where the read files carry no `readOrder`, as with a long-read BAM, the only key is `R1` | error |
+| **Layouts match files** | every `readOrder` among the FASTQ files of the `labData` entry has a layout in `readStructure`, and every layout has a FASTQ file with that `readOrder`. Where the FASTQ files carry no `readOrder`, as with long reads, the only key is `R1` | error |
 | **Minimum below maximum** | `minLength` is less than `maxLength` | error |
 | **One insert per layout** | no layout holds more than one `insert` segment | error |
 | **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | error |
@@ -189,6 +198,7 @@ The checks from "Minimum below maximum" to "Neighbouring segments differ" make a
 | **Record length** | in a fixed layout, every record has exactly the summed length. In a layout with a variable segment, every record has at least the fixed lengths plus `minLength` and at most the fixed lengths plus `maxLength` | every record | error |
 | **Known sequence** | for each `known` segment: at least 95 percent of the records match an entry in `sequences` | the record sample | error |
 | **UMI composition** | for each `random` `umi` segment: at no position of the segment does one base exceed 90 percent of the records | the record sample | warning |
+| **UMI tag complete** | in a BAM: either every record carries `RX`, or none does | every record | error |
 
 **How the known sequence check matches.**
 
@@ -205,20 +215,20 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 
 | Value | Derivation |
 |---|---|
-| UMI used | at least one segment with `segmentType` `umi` exists. This holds for FASTQ submissions; see section 8 for BAM |
+| UMI used | FASTQ: at least one segment with `segmentType` `umi` exists. BAM: the records carry `RX` |
 | UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI |
 | duplex | the GRZ treats every dual UMI as duplex-capable. Whether the chemistry of a kit is duplex is not declared |
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
-| UMI tag | written at the GRZ by cutting each `umi` segment at its position |
+| UMI tag | FASTQ: written at the GRZ by cutting each `umi` segment at its position. BAM: the `RX` tag |
 | sample barcode | the entries of the `sampleBarcode` segments, in the order `R1`, `R2`, `I1`, `I2` and 5' to 3' within a layout, joined with `-`. Without such a segment, `labData.barcode`. `sampleBarcode` and `spacer` bases are cut and discarded |
 
 ## 8. Open points
 
-- A BAM submission with a UMI in `RX` tags and no `readStructure` records UMI usage nowhere.
+- A BAM submission records UMI usage only in its records (`RX`), not in the metadata.
 - Whether reads of platforms without a fixed cycle count end at a constant position relative to the molecule. Counting from the 3' end needs that, for example for a UMI at both ends of a long read.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
-- How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence.
+- How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence. Ion Torrent tag sequencing moves the tags into the BAM tags `ZT` and `YT`, so its FASTQ files lack them.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
 - Whether the record sample should be the first 10,000 records or records spread over the file.
 - Whether single-end submissions keep the key `R1`.

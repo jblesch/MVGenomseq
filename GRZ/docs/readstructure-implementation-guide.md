@@ -386,6 +386,19 @@ position:                100      108        118
 
 `sequences` holds the two barcodes in forward orientation. `reverseComplement: true` says that the record shows `CCAACGTGAT` where the declared value is `ATCACGTTGG`. The sample barcode is the two entries in read order, `ATCACGTTGG-CGTGATAGCC`. The order of the parts inside the read barcode depends on the kit.
 
+### Long reads as BAM
+
+A BAM holds only the insert in its read sequence, and its `labData` entry has no `readStructure`. Before submission, the kit bases move into tags: a UMI into `RX`, its base qualities into `QX`. One record, before and after:
+
+```
+FASTQ record:  ACGTTGATTACAGGCTTAACG     umi 3, spacer 2, insert 16
+BAM record:    SEQ   GATTACAGGCTTAACG    the insert only
+               RX:Z  ACG                 the UMI. Two UMIs of one record: ACG-TGC, 5' first
+               QX:Z  FFF                 the UMI's base qualities
+```
+
+Torrent Suite writes the tags of tag sequencing into `ZT` and `YT`. Move them into `RX` as `<ZT>-<YT>`. Where a UMI is still in the read sequence, for example in a nanopore BAM, extract it before submission.
+
 ## Translate Illumina settings with code
 
 The function `read_structure_from_illumina` turns BCL Convert settings into `readStructure` and into the `readLength` of each file. It refuses settings whose output the GRZ does not accept. Python, standard library only.
@@ -623,6 +636,7 @@ zcat sample_R1.fastq.gz \
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
 | Known sequence | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
 | UMI composition (warning) | a `random` UMI shows one base in nearly all records at one position | that position is probably a spacer. Check the UMI length |
+| UMI tag complete | some records of a BAM carry `RX`, others do not | extract the UMI of every record, or of none |
 | One cycle count per entry | files of one `readOrder` have different `readLength` | put runs with different cycle counts into separate `labData` entries |
 | Schema: a `sampleBarcode` segment that is `random`, or has two entries | the barcode was declared without its value, or with two values | declare it `known`, with the index in forward orientation as its one entry |
 | Schema: an `R1` or `R2` layout without an `insert` segment | a data read was declared without template | check which file the layout belongs to |
@@ -968,6 +982,7 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | the key `R1` twice | rejected while parsing, before the schema runs |
 | a key other than `R1`, `R2`, `I1` and `I2` | invalid |
 | an object without a key | invalid |
+| `readStructure` in a `labData` entry without a FASTQ file | invalid |
 | an `I1` layout with a `sampleBarcode` segment only | valid, an index-read file may hold only the index |
 | an `insert` segment with `sequenceType` `known` | invalid |
 | a `known` segment without `reverseComplement` | invalid |

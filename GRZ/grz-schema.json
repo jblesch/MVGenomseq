@@ -304,7 +304,8 @@
                       }
                     }
                   },
-                  "then":{"required":["readStructure"]}
+                  "then":{"required":["readStructure"]},
+                  "else":{"properties":{"readStructure":false}}
                 }
               ],
               "properties":{
@@ -456,7 +457,7 @@
                 },
                 "readStructure":{
                   "type":"object",
-                  "description":"The segments of each submitted read file. Each key is a readOrder of files[], and each value lists the segments of one record of that file, 5' to 3'. A segment is found by counting bases from the start of the record, never by matching a sequence: its position is the sum of the lengths of the segments before it. Required whenever a FASTQ file is submitted, optional with BAM. A submitted FASTQ holds every kit base in the read sequence. A UMI that exists only in the read name is not accepted. Adapter bases may be masked with N and must not be removed.",
+                  "description":"The segments of each submitted FASTQ file. Each key is a readOrder of files[], and each value lists the segments of one record of that file, 5' to 3'. A segment is found by counting bases, never by matching a sequence: from the 5' end, and behind a variable insert from the 3' end. Required whenever a FASTQ file is submitted, and absent otherwise. A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked with N and must not be removed. A submitted BAM holds only the insert in its read sequence, and a UMI in the RX tag.",
                   "additionalProperties":false,
                   "minProperties":1,
                   "properties":{
