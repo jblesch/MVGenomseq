@@ -9,7 +9,7 @@
 - `readStructure` is required whenever a FASTQ file is submitted, and optional with BAM.
 - A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked and must not be removed.
 - A `known` segment is checked against the data, and a mismatch is an error.
-- The GRZ extracts the kit bases, using the declaration. The submitter extracts nothing.
+- The GRZ extracts the kit bases, using the declaration.
 
 This file states the rules, independent of any software. Worked examples, settings for specific software, and reference code are in `readstructure-implementation-guide.md`.
 
@@ -34,7 +34,7 @@ Short reads are submitted as FASTQ, and long reads as BAM, as "QS durch GRZ MVGe
 
 | Requirement | Text |
 |---|---|
-| **Kit bases stay in the read** | The read sequence MUST hold every base the demultiplexer wrote for that read, kit bases included. The submitter MUST NOT extract a segment. |
+| **Kit bases stay in the read** | The read sequence MUST hold every base the demultiplexer wrote for that read, kit bases included. |
 | **No trimming** | Adapter bases MAY be masked with `N` and MUST NOT be removed. Quality trimming, polyG trimming, length filtering and read discarding MUST NOT be applied. |
 | **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. |
 | **Index-read files complete** | Index-read files (`readOrder` `I1` and `I2`) MUST be submitted when the UMI was sequenced in index cycles, and MAY be submitted otherwise. Where any index-read file is submitted, every index read of the run MUST be submitted. |
