@@ -12,7 +12,7 @@
 - A segment is `known` or `random`. A `known` segment is checked against the data, and a mismatch is an error.
 - The GRZ extracts the kit bases, using the declaration. The submitter extracts nothing.
 
-This file states the rules. Worked examples and reference code are in `readstructure-implementation-guide.md`.
+This file states the rules, independent of any software. Worked examples, settings for specific software, and reference code are in `readstructure-implementation-guide.md`.
 
 Every requirement and every check in this file has a name that says what it does. The names are used with the same wording in the implementation guide.
 
@@ -48,7 +48,6 @@ A marker in square brackets says where a rule comes from.
 | Marker | Meaning |
 |---|---|
 | [GRZ] | a rule that this specification defines |
-| [ILMN] | an Illumina convention: BCL Convert, DRAGEN or the sample sheet |
 | [STD] | a vendor-neutral standard |
 
 ## 2. Requirements on submitted files
@@ -59,7 +58,7 @@ These requirements apply to FASTQ submissions.
 |---|---|---|
 | **Kit bases stay in the read** | The read sequence MUST hold every base the demultiplexer wrote for that read, kit bases included. The submitter MUST NOT extract a segment. | [GRZ] |
 | **No trimming** | Adapter bases MAY be masked with `N` and MUST NOT be removed. Quality trimming, polyG trimming, length filtering and read discarding MUST NOT be applied. | [GRZ] |
-| **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. On BCL Convert, a UMI read in `U` cycles needs `TrimUMI,0`. A UMI read in `Y` cycles stays in the read sequence anyway. | [ILMN] [GRZ] |
+| **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. | [GRZ] |
 | **Index-read files complete** | Index-read files (`readOrder` `I1` and `I2`) MUST be submitted when the UMI was sequenced in index cycles, and MAY be submitted otherwise. Where any index-read file is submitted, every index read of the run MUST be submitted. | [GRZ] |
 | **One cycle count per entry** | With a fixed layout, all files of that `readOrder` within one `labData` entry MUST have the same `readLength`. Runs with different cycle counts go into separate `labData` entries. | [GRZ] |
 | **Read name is not read** | No requirement and no check in this specification reads the read name or the read comment. | [GRZ] |
@@ -156,7 +155,7 @@ The definitions state four things about layouts and segments.
 Three rules complete the schema.
 
 - **One conditional on the `labData` item.** Where any `files[].fileType` is `fastq`, `readStructure` is required. Its JSON encoding is in `grz-schema.json`. [GRZ]
-- **Duplicate keys.** Many JSON parsers, Python's `json` and JavaScript's `JSON.parse` among them, keep the last of two equal keys without a message. A validator MUST reject a metadata file in which a key of `readStructure` appears twice. [GRZ]
+- **Duplicate keys.** Many JSON parsers keep the last of two equal keys without a message. A validator MUST reject a metadata file in which a key of `readStructure` appears twice. [GRZ]
 - **Dialect.** No keyword above needs a dialect newer than draft-07. `$defs` is the 2019-09 name of `definitions`, and the schema uses the name that its declared dialect prescribes. [STD]
 
 Which layouts `readStructure` must hold is not part of the schema. The check "Layouts match files" in section 7 states it.
@@ -177,7 +176,7 @@ Which layouts `readStructure` must hold is not part of the schema. The check "La
 Further rules on the fields:
 
 - A layout MUST list every base of the record. A base that reaches the file and is not template is a kit base and MUST be declared as such. [GRZ]
-- A cycle that the demultiplexer did not write (`N` in `OverrideCycles`) is not in the record and MUST NOT be declared. [ILMN] [GRZ]
+- A cycle that the demultiplexer did not write is not in the record and MUST NOT be declared. [GRZ]
 - `labData.barcode` holds each index sequence in forward orientation, never its reverse complement. For the first index, that is the sequence the kit lists for the sample sheet. For the second index, kit documentation often lists two sequences, one per instrument workflow. `labData.barcode` holds the one listed for the forward strand workflow. A sample with two indexes has two different sequences. They are joined with `-`, first index then second index. [GRZ]
 - Where the library has no index, or the sequence is not known, `labData.barcode` is `null`. The key is still required. The string `na` is not a value. [GRZ]
 - Where a submitted file holds the barcode, a `sampleBarcode` segment declares it. Its one entry is that index in forward orientation, and `reverseComplement` states how the record shows it. This declaration takes precedence over `labData.barcode`, which MAY repeat the value or be `null`. No check compares the two. [GRZ]
@@ -200,7 +199,7 @@ A segment is found by counting bases. It is never found by matching a sequence. 
 
 - The GRZ cuts each segment at its position. It MUST NOT search a record for a sequence in order to decide where a segment starts or ends.
 - `sequences` has one use. The known sequence check tests whether the bases at the position are the declared ones. `sequences` never moves a position.
-- A kit segment therefore has the same number of bases in every record of a file. `length` is the number of bases the sequencer read for the segment. That is the number of cycles the conversion assigns to it, for example 7 for `U7` in `OverrideCycles`. It can be larger than the length the kit documentation gives for one sequence.
+- A kit segment therefore has the same number of bases in every record of a file. `length` is the number of bases the sequencer read for the segment, one per sequencing cycle. It can be larger than the length the kit documentation gives for one sequence.
 
 Some kits use sequences of different lengths for one segment. They MUST be declared with one `length`, as follows.
 
@@ -209,7 +208,7 @@ Some kits use sequences of different lengths for one segment. They MUST be decla
 | A constant base follows the shorter sequence | TruSight Oncology. The UMIs are 6-mers and 7-mers, read in 7 UMI cycles. The seventh base is `T` after a 6-mer, and it is never `T` in a 7-mer | `umi` with `length` 7. A 6-mer is entered together with the `T` that follows it, so every entry has 7 bases | exact |
 | Template follows the shorter sequence | Agilent SureSelect XT HS2. A read starts with 3 UMI bases, then 1 or 2 dark bases, then template | the longer form: `umi` 3, followed by `spacer` 2 where the dark bases are in the file | a read with one dark base loses its first template base when the GRZ extracts the reads. The submitted file keeps every base |
 
-The second case is the price of counting. Illumina documents `U3N2Y146` for that kit, which counts in the same way. [ILMN] A segment whose sequences cannot be completed to one length MAY always be declared `random`.
+The second case is the price of counting. A segment whose sequences cannot be completed to one length MAY always be declared `random`.
 
 ## 6. Unambiguous layouts
 
@@ -275,8 +274,8 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 | Value | Derivation |
 |---|---|
 | UMI used | at least one segment with `segmentType` `umi` exists. This holds for FASTQ submissions; see section 9 for BAM |
-| UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI. These are DRAGEN's terms [ILMN]. A `umi` segment in two layouts other than `R1` and `R2` has no derived placement; see section 9 |
-| duplex | the GRZ treats every dual UMI as duplex-capable, as DRAGEN does. Whether the chemistry of a kit is duplex is not declared |
+| UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI. A `umi` segment in two layouts other than `R1` and `R2` has no derived placement; see section 9 |
+| duplex | the GRZ treats every dual UMI as duplex-capable. Whether the chemistry of a kit is duplex is not declared |
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
 | UMI tag | written at the GRZ by cutting each `umi` segment at its position |
@@ -289,9 +288,9 @@ The pipeline therefore never applies `reverseComplement` to a barcode. Only the 
 - A BAM submission with a UMI in `RX` tags and no `readStructure` records UMI usage nowhere.
 - A long-read library with a UMI at both ends of a variable insert cannot be declared.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
-- Variable-length platforms that submit FASTQ. The FASTQ requirements of this specification assume a fixed read length. How the requirement "No trimming" applies to Ion Torrent is undecided, and so is whether Torrent Suite leaves the molecular tag and the barcode in the read sequence.
+- Variable-length platforms that submit FASTQ. The FASTQ requirements of this specification assume a fixed read length. How the requirement "No trimming" applies to Ion Torrent is undecided, and so is whether Ion Torrent FASTQ files keep the molecular tag and the barcode in the read sequence.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
 - Whether the record sample should be the first 10,000 records or records spread over the file. The first records of a file come from the edge of a tile.
 - The key for single-end submissions. It is `R1` today because `files[].readOrder` offers nothing else.
 - The entries and the number of the nonrandom UMI sets, and whether a vendor's set may be copied into a submission.
-- The switch-over date for UMI libraries that were converted with `TrimUMI,1`. This needs a decision.
+- The switch-over date for UMI libraries whose existing files hold the UMI only in the read name. This needs a decision.
