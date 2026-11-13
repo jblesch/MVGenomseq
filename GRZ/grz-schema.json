@@ -441,7 +441,7 @@
                 },
                 "barcode":{
                   "type":["string","null"],
-                  "description":"The index sequence of the sample, in its forward writing: the writing the kit lists for the sample sheet, never its reverse complement. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value. A known sampleBarcode segment in readStructure repeats the corresponding part of this value.",
+                  "description":"The index sequence of the sample, in forward orientation, never its reverse complement. For the second index, this is the sequence that the kit lists for the forward strand workflow. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value. A known sampleBarcode segment in readStructure repeats the corresponding part of this value.",
                   "pattern":"^[ACGT]+(-[ACGT]+)?$"
                 },
                 "sequencingLayout":{

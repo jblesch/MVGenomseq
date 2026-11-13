@@ -6,7 +6,7 @@
 
 - `readStructure` is an object. Each key is a `readOrder`, and each value lists the segments of one record in 5' to 3' order.
 - Segments are found by counting bases from the start of the record, never by matching a sequence.
-- A layout is unambiguous. Each record cuts into segments in exactly one way, and each file has one valid declaration.
+- A layout is unambiguous: it cuts each record into segments in exactly one way.
 - It is required whenever a FASTQ file is submitted and optional with BAM.
 - A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is not accepted. Adapter bases may be masked and must not be removed.
 - A segment is `known` or `random`. A `known` segment is checked against the data, and a mismatch is an error.
@@ -38,9 +38,9 @@ Every requirement and every check in this file has a name that says what it does
 | layout | the ordered list of segments for one `readOrder` |
 | fixed layout | a layout in which every segment has a `length` |
 | position | the 0-based index of a segment's first base, counted from the 5' end of the record |
-| sample | the first 10,000 records of a file, or all records where the file has fewer |
+| record sample | the first 10,000 records of a file, or all records where the file has fewer |
 
-`readOrder`, `readLength`, `sequencingLayout` and `fileType` are fields of `grz-schema.json` and keep their meaning there. `labData.barcode` is a field of that schema as well. Section 4 states what this specification requires of it.
+`readOrder`, `readLength`, `sequencingLayout` and `fileType` are fields of `grz-schema.json` and keep their meaning there. `files[]` stands for `labData.sequenceData.files[]`. `labData.barcode` is a field of that schema as well. Section 4 states what this specification requires of it.
 
 A marker in square brackets says where a rule comes from.
 
@@ -58,7 +58,7 @@ These requirements apply to FASTQ submissions.
 |---|---|---|
 | **Kit bases stay in the read** | The read sequence MUST hold every base the demultiplexer wrote for that read, kit bases included. The submitter MUST NOT extract a segment. | [GRZ] |
 | **No trimming** | Adapter bases MAY be masked with `N` and MUST NOT be removed. Quality trimming, polyG trimming, length filtering and read discarding MUST NOT be applied. | [GRZ] |
-| **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. On BCL Convert the requirement means `TrimUMI,0`. | [ILMN] [GRZ] |
+| **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. On BCL Convert, a UMI read in `U` cycles needs `TrimUMI,0`. A UMI read in `Y` cycles stays in the read sequence anyway. | [ILMN] [GRZ] |
 | **Index-read file only with a UMI** | An index-read file (`readOrder` `I1` or `I2`) MUST be submitted when the UMI was sequenced in those index cycles. It MUST NOT be submitted otherwise. | [GRZ] |
 | **One cycle count per entry** | With a fixed layout, all files of that `readOrder` within one `labData` entry MUST have the same `readLength`. Runs with different cycle counts go into separate `labData` entries. | [GRZ] |
 | **Read name is not read** | No requirement and no check in this specification reads the read name or the read comment. | [GRZ] |
@@ -152,7 +152,7 @@ The definitions state three things about layouts.
 Three rules complete the schema.
 
 - **One conditional on the `labData` item.** Where any `files[].fileType` is `fastq`, `readStructure` is required. Its JSON encoding is in `grz-schema.json`. [GRZ]
-- **Duplicate keys.** A JSON parser keeps the last of two equal keys without a message. A validator MUST reject a metadata file in which a key of `readStructure` appears twice. [GRZ]
+- **Duplicate keys.** Many JSON parsers, Python's `json` and JavaScript's `JSON.parse` among them, keep the last of two equal keys without a message. A validator MUST reject a metadata file in which a key of `readStructure` appears twice. [GRZ]
 - **Dialect.** No keyword above needs a dialect newer than draft-07. `$defs` is the 2019-09 name of `definitions`, and the schema uses the name that its declared dialect prescribes. [STD]
 
 Which layouts `readStructure` must hold is not part of the schema. The check "Layouts match files" in section 7 states it.
@@ -174,10 +174,10 @@ Further rules on the fields:
 
 - A layout MUST list every base of the record. A base that reaches the file and is not template is a kit base and MUST be declared as such. [GRZ]
 - A cycle that the demultiplexer did not write (`N` in `OverrideCycles`) is not in the record and MUST NOT be declared. [ILMN] [GRZ]
-- `labData.barcode` holds each index sequence in its forward writing. That is the writing the kit lists for the sample sheet, and never its reverse complement. A sample with two indexes has two different sequences. They are joined with `-`, first index then second index. [GRZ]
+- `labData.barcode` holds each index sequence in forward orientation, never its reverse complement. For the first index, that is the sequence the kit lists for the sample sheet. For the second index, kit documentation often lists two sequences, one per instrument workflow. `labData.barcode` holds the one listed for the forward strand workflow. A sample with two indexes has two different sequences. They are joined with `-`, first index then second index. [GRZ]
 - Where the library has no index, or the sequence is not known, `labData.barcode` is `null`. The key is still required. The string `na` is not a value. [GRZ]
 - A `sampleBarcode` segment that is `known` MUST repeat the corresponding part of `labData.barcode` as stored there. `reverseComplement` then states how the bases in the record relate to that stored value. [GRZ]
-- Locus primers of an amplicon panel are part of the `insert` segment. Adapter read-through is part of the last segment and is described by `files[].adapterSequence`. [GRZ]
+- Locus primers of an amplicon panel are part of the `insert` segment. Adapter read-through is part of the last segment. [GRZ]
 - The variable-length form is for platforms without a fixed cycle count, such as Ion Torrent. A platform that sequences by synthesis with a fixed cycle count MUST use `length` for every segment. [GRZ]
 
 ## 5. Positions
@@ -203,13 +203,13 @@ Some kits use sequences of different lengths for one segment. They MUST be decla
 | Case | Real kit | Declaration | Result |
 |---|---|---|---|
 | A constant base follows the shorter sequence | TruSight Oncology. The UMIs are 6-mers and 7-mers, read in 7 UMI cycles. The seventh base is `T` after a 6-mer, and it is never `T` in a 7-mer | `umi` with `length` 7. A 6-mer is entered together with the `T` that follows it, so every entry has 7 bases | exact |
-| Template follows the shorter sequence | Agilent SureSelect XT HS2. A read starts with 3 barcode bases, then 1 or 2 dark bases, then template | the longer form: `umi` 3, followed by `spacer` 2 where the dark bases are in the file | a read with one dark base loses its first template base when the GRZ extracts the reads. The submitted file keeps every base |
+| Template follows the shorter sequence | Agilent SureSelect XT HS2. A read starts with 3 UMI bases, then 1 or 2 dark bases, then template | the longer form: `umi` 3, followed by `spacer` 2 where the dark bases are in the file | a read with one dark base loses its first template base when the GRZ extracts the reads. The submitted file keeps every base |
 
 The second case is the price of counting. Illumina documents `U3N2Y146` for that kit, which counts in the same way. [ILMN] A segment whose sequences cannot be completed to one length MAY always be declared `random`.
 
 ## 6. Unambiguous layouts
 
-Each record cuts into segments in exactly one way, and each file has exactly one valid declaration. Five rules guarantee this. [GRZ]
+A layout cuts each record into segments in exactly one way, and a random segment cannot be split into an equivalent pair. Five rules guarantee this. [GRZ]
 
 | Rule | What it prevents | Stated by |
 |---|---|---|
@@ -253,8 +253,8 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | Check | What it tests | Runs on | Result |
 |---|---|---|---|
 | **Record length** | in a fixed layout, every record has exactly the summed length. In a layout with a variable segment, every record has at least the fixed lengths plus `minLength` and at most the fixed lengths plus `maxLength` | every record | error |
-| **Known sequence** | for each `known` segment: at least 95 percent of the records match an entry in `sequences` | the sample | error |
-| **UMI composition** | for each `random` `umi` segment: at no position of the segment does one base exceed 90 percent of the records | the sample | warning |
+| **Known sequence** | for each `known` segment: at least 95 percent of the records match an entry in `sequences` | the record sample | error |
+| **UMI composition** | for each `random` `umi` segment: at no position of the segment does one base exceed 90 percent of the records | the record sample | warning |
 
 **How the known sequence check matches.** [GRZ]
 
@@ -272,7 +272,7 @@ A pipeline derives these values from `readStructure`. No other field declares th
 | Value | Derivation |
 |---|---|
 | UMI used | at least one segment with `segmentType` `umi` exists. This holds for FASTQ submissions; see section 9 for BAM |
-| UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI. These are DRAGEN's terms [ILMN] |
+| UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI. These are DRAGEN's terms [ILMN]. A `umi` segment in two layouts other than `R1` and `R2` has no derived placement; see section 9 |
 | duplex | the GRZ treats every dual UMI as duplex-capable, as DRAGEN does. Whether the chemistry of a kit is duplex is not declared |
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
@@ -285,9 +285,10 @@ The pipeline therefore never applies `reverseComplement` to a barcode. Only the 
 
 - A BAM submission with a UMI in `RX` tags and no `readStructure` records UMI usage nowhere.
 - A long-read library with a UMI at both ends of a variable insert cannot be declared.
+- The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - Variable-length platforms that submit FASTQ. The FASTQ requirements of this specification assume a fixed read length. How the requirement "No trimming" applies to Ion Torrent is undecided, and so is whether Torrent Suite leaves the molecular tag and the barcode in the read sequence.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
-- Whether the sample should be the first 10,000 records or records spread over the file. The first records of a file come from the edge of a tile.
+- Whether the record sample should be the first 10,000 records or records spread over the file. The first records of a file come from the edge of a tile.
 - The key for single-end submissions. It is `R1` today because `files[].readOrder` offers nothing else.
 - The entries and the number of the nonrandom UMI sets, and whether a vendor's set may be copied into a submission.
 - The switch-over date for UMI libraries that were converted with `TrimUMI,1`. This needs a decision.

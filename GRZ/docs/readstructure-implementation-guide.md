@@ -4,12 +4,13 @@
 
 **tl;dr**
 
-- **A library without a UMI:** copy the example "WGS without UMI" and set `length` to your cycle count. Nothing else changes.
+- **A library without a UMI:** copy the example "WGS without UMI" and set `length` to your cycle count.
 - **A library with a UMI on Illumina:** set `TrimUMI,0` once in the sample sheet. Then copy the example that matches your `OverrideCycles`.
 - **Adapters:** mask them, do not trim them.
+- **barcode:** write `null` where the library has no index or the sequence is not known. `na` is not accepted.
 - **GRZ side:** run the checks in three steps, then derive the fgbio read structures and the DRAGEN options from the declaration.
 
-The guide has two parts. The first is for the submitting laboratory (LE). The second is for whoever implements validation and extraction at the GRZ. Requirements and checks are called by the names the specification gives them.
+The guide has two parts. The first is for the submitting laboratory. The second is for whoever implements validation and extraction at the GRZ. Requirements and checks are called by the names the specification gives them.
 
 ## Contents
 
@@ -46,9 +47,11 @@ The guide has two parts. The first is for the submitting laboratory (LE). The se
 | MGI, kit bases at the end of R2 | MGI read barcode | a demultiplexer that leaves the read barcode in R2 |
 | Ion Torrent | none yet | not settled; see the open points of the specification |
 
+Every case also needs `AdapterBehavior,mask` where the sample sheet names an adapter; see [Conversion settings](#conversion-settings).
+
 Every Illumina example names a real kit and the `OverrideCycles` that Illumina documents for it. Another kit with the same `OverrideCycles` uses the same example.
 
-You set `readStructure` once per sequencing type. Every submission of that type carries the same value. Only a `sampleBarcode` segment changes per sample.
+You set `readStructure` once per library kit and `OverrideCycles`. Every submission with that combination carries the same value. Only a `sampleBarcode` segment changes per sample.
 
 ## From OverrideCycles to readStructure
 
@@ -76,7 +79,7 @@ Two more rules keep a declaration unambiguous.
 
 The barcode itself has a field of its own, `labData.barcode`.
 
-- It holds each index in its forward writing, as the kit lists it for the sample sheet. Two indexes are joined with `-`, first index then second index, for example `TAAGGCGA-AAGGCTAT`.
+- It holds each index in forward orientation. For the second index, take the sequence that the kit lists for the forward strand workflow. Two indexes are joined with `-`, first index then second index, for example `TAAGGCGA-AAGGCTAT`.
 - If the library has no index, or you do not know its sequence, the value is `null`. Do not write `na`.
 
 A library with a known barcode, and a library without one:
@@ -107,14 +110,14 @@ So `length` is the number of bases the sequencer read for the segment. That is t
 **TruSight Oncology.** The UMIs are 6-mers and 7-mers, and the conversion reads 7 UMI cycles (`U7`). After a 6-mer, the seventh base is always the `T` of the adapter. A 7-mer never has `T` as its seventh base.
 
 ```
-read with a 7-mer:   ACGTACG T GATTACAGGC...   bases 1 to 7: the UMI.          base 8: the adapter T
-read with a 6-mer:   TTGCAAT G ATTACAGGCT...   bases 1 to 7: the UMI and the T. base 8: template
-                     |umi 7|
+cycles, 7-mer:   ACGTACG T GATTACAGGC...   cycles 1 to 7: the UMI.           cycle 8: the adapter T
+cycles, 6-mer:   TTGCAAT G ATTACAGGCT...   cycles 1 to 7: the UMI and the T. cycle 8: template
+                 |umi 7|
 ```
 
-Declare `umi` with `length` 7. Enter a 7-mer as it is. Enter a 6-mer with the `T` behind it, so `TTGCAA` becomes `TTGCAAT`. All entries then have 7 bases, and the declaration is exact. The sequences shown stand for the entries of the kit's list.
+Cycle 8 is the `N1` cycle, so it is not written to the file. Declare `umi` with `length` 7. Enter a 7-mer as it is. Enter a 6-mer with the `T` behind it, so `TTGCAA` becomes `TTGCAAT`. All entries then have 7 bases, and the declaration is exact. The sequences shown stand for the entries of the kit's list.
 
-**Agilent SureSelect XT HS2.** A read starts with 3 barcode bases and then 1 or 2 dark bases. Template follows directly, so the shorter start cannot be completed with a constant base. Declare the longer form.
+**Agilent SureSelect XT HS2.** A read starts with 3 UMI bases and then 1 or 2 dark bases. Template follows directly, so the shorter start cannot be completed with a constant base. Declare the longer form.
 
 | Conversion | Layout |
 |---|---|
@@ -208,7 +211,7 @@ The two `N` cycles are not written, so a record has 149 bases. Check the record 
 
 ### Inline UMI with dark bases
 
-The same kit, converted without UMI cycles, as `Y151;I8;I8;Y151`. Agilent's own trimmer expects this form. The 3 barcode bases and the dark bases behind them are then in the file, and you declare them.
+The same kit, converted without UMI cycles, as `Y151;I8;I8;Y151`. Agilent's own trimmer expects this form. The 3 UMI bases and the dark bases behind them are then in the file, and you declare them.
 
 ```
 record:    ACG TT GATTACAGGCTTAACG...
@@ -421,8 +424,11 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
     index, index2                 the index values of this sample, as labData.barcode holds them
     index2_reverse_complement     True where the I2 file shows the reverse complement of index2
     umi_sequences                 the set of a nonrandom UMI kit, otherwise None
+
+    A read with Y cycles is a data read: R1, then R2. Every other read is an
+    index read: I1, then I2.
     """
-    if adapter_behavior == "trim":
+    if str(adapter_behavior).strip().lower() == "trim":
         raise ValueError("AdapterBehavior,trim removes bases. Use AdapterBehavior,mask.")
     reads = parse_override_cycles(override_cycles)
     has_umi = any(letter == "U" for read in reads for letter, _ in read)
@@ -477,7 +483,9 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
             segments.append(segment)
         read_structure[key] = segments
         read_length[key] = sum(segment["length"] for segment in segments)
-    return {"readStructure": read_structure, "readLength": read_length}
+    order = sorted(read_structure, key=["R1", "R2", "I1", "I2"].index)  # file order
+    return {"readStructure": {key: read_structure[key] for key in order},
+            "readLength": {key: read_length[key] for key in order}}
 
 
 def split_insert(segments, *leading):
@@ -558,7 +566,7 @@ for key in ("R1", "R2"):
 ```
 
 - **The set of a nonrandom UMI kit.** Pass the entries as `umi_sequences`.
-- **The orientation of the second index.** `labData.barcode` holds each index in its forward writing, as the kit lists it for the sample sheet. Where the I2 file holds index bases, `index2_reverse_complement` says whether the file shows the reverse complement of that value. That is the case on an instrument that reads the second index from the other strand. `RunInfo.xml` marks such a read with `IsReverseComplement` where the instrument writes that flag. The I1 file shows the first index as stored, so the function uses `false` there.
+- **The orientation of the second index.** `labData.barcode` holds each index in forward orientation. Where the I2 file holds index bases, `index2_reverse_complement` says whether the file shows the reverse complement of that value. That is the case on an instrument that reads the second index from the other strand. `RunInfo.xml` marks such a read with `IsReverseComplement` where the instrument writes that flag. The I1 file shows the first index as stored, so the function uses `false` there.
 
 ## Check your files before you submit
 
@@ -571,11 +579,11 @@ zcat sample_R1.fastq.gz \
   | awk 'NR % 4 == 2 { n[length($0)]++ } END { for (l in n) print l, n[l] }'
 ```
 
-- One length, equal to your cycle count: the UMI is in the read, and nothing was trimmed.
-- One length, shorter than your cycle count by the UMI length: the UMI was cut out. Convert again with `TrimUMI,0`.
+- One length, equal to the number of cycles of that read, not counting `N` cycles: the UMI is in the read, and nothing was trimmed.
+- One length, shorter than that by the UMI length: the UMI was cut out. Convert again with `TrimUMI,0`.
 - Many lengths: adapters were trimmed. Convert again with `AdapterBehavior,mask`.
 
-**Bases at one position, over the first 10,000 records.** The command looks at the eighth base. Change the `8` to look at another base:
+**Bases at one position, over the first 10,000 records.** The command looks at the eighth base, which is position 7. Change the `8` to look at another base:
 
 ```sh
 zcat sample_R1.fastq.gz \
@@ -595,6 +603,7 @@ zcat sample_R1.fastq.gz \
 | One insert per layout | a layout has two `insert` segments | declare the template of one file as one `insert` segment |
 | Neighbouring segments differ | two `random` segments of the same type follow each other | merge them into one segment with the summed `length` |
 | Length sum | the lengths in a layout do not sum to `readLength` | recount. An `N` cycle is not in the file and has no segment |
+| Entry length | an entry of `sequences` does not have `length` bases | enter every entry with exactly `length` bases. Enter a 6-mer of a 7-cycle UMI together with the base that follows it |
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
 | Known sequence | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
 | UMI composition (warning) | a `random` UMI shows one base in nearly all records at one position | that position is probably a spacer. Check the UMI length |
@@ -610,9 +619,9 @@ zcat sample_R1.fastq.gz \
 
 Run the three steps in this order, and stop at the first step that reports an error.
 
-1. **Schema checks.** Reject duplicate keys while parsing the metadata. A JSON parser otherwise keeps the last of two equal keys without a message. Then validate against `grz-schema.json`.
+1. **Schema checks.** Reject duplicate keys while parsing the metadata. Many JSON parsers otherwise keep the last of two equal keys without a message. Then validate against `grz-schema.json`.
 2. **Metadata checks.** They compare fields of the submission and need no file access.
-3. **Data checks.** The record length check runs on every record, on the pass that already computes the checksum. The known sequence check and the UMI composition check run on the sample of each file.
+3. **Data checks.** The record length check runs on every record, on the pass that already computes the checksum. The known sequence check and the UMI composition check run on the record sample of each file.
 
 Extraction runs only after all three steps passed without an error.
 
@@ -664,6 +673,11 @@ def check_layout(segments):
                 and left["sequenceType"] == right["sequenceType"] == "random"):
             errors.append("neighbouring segments differ: two random "
                           f"{left['segmentType']} segments follow each other")
+    for index, seg in enumerate(segments):
+        for entry in seg.get("sequences", []):
+            if len(entry) != seg["length"]:
+                errors.append(f"entry length: segment {index} has the entry {entry} "
+                              f"of {len(entry)} bases, declared {seg['length']}")
     for index, seg in enumerate(segments):
         if "length" in seg:
             continue
@@ -784,7 +798,11 @@ Use for one file:
 ```python
 metadata = json.loads(text, object_pairs_hook=reject_duplicate_keys)
 
-segments = read_structure[read_order]    # the layout for the readOrder of the file
+lab_data = metadata["donors"][0]["labData"][0]    # one labData entry
+fastq = lab_data["sequenceData"]["files"][0]       # one FASTQ file of that entry
+path = fastq["filePath"]                           # relative to the files directory
+
+segments = lab_data["readStructure"][fastq.get("readOrder", "R1")]
 layout_errors = check_layout(segments)   # needs no file
 
 error = check_record_length(segments, read_sequences(path))   # every record
@@ -835,6 +853,8 @@ The pipeline does not take the sample barcode from the read. The file is already
 DRAGEN names no library type for a single-ended nonrandom UMI. The function raises an error for that case. The GRZ treats every dual UMI as duplex-capable, as DRAGEN does.
 
 The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-sequence-position-r1` and `--umi-sequence-position-r2` for a UMI that is still in the read sequence. The value is the UMI length, or a string such as `U7N1` where a spacer follows the UMI. For "Inline UMI" that gives `3`, and for "Inline UMI with dark bases" it gives `U3N2`. This mapping is taken from the documentation and still has to be run once on real data.
+
+For a UMI in an index-read file, as in the examples "UMI behind the index" and "UMI in the second index read", this guide gives no DRAGEN options yet.
 
 ## Test vectors
 
@@ -893,6 +913,7 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | `insert` 50, `spacer` 1 `known`, `insert` 99 | One insert per layout | error |
 | `insert` 1 to 600, then `umi` 8 `random` | Variable segment last | error |
 | `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | error |
+| `umi` 7 `known` with the entry `TTGCAA`, then `insert` 143 | Entry length | error, the 6-mer lacks the `T` that follows it |
 
 **Schema checks.** Each row is one `readStructure` value.
 
