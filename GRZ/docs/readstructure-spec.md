@@ -214,8 +214,6 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 | Value | Derivation |
 |---|---|
 | UMI used | FASTQ: at least one segment with `segmentType` `umi` exists. BAM: the records carry `RX` |
-| UMI placement | a `umi` segment in both the `R1` and the `R2` layout is a dual UMI. A `umi` segment in exactly one layout is a single-ended UMI |
-| duplex | the GRZ treats every dual UMI as duplex-capable. Whether the chemistry of a kit is duplex is not declared |
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
 | UMI tag | FASTQ: written at the GRZ by cutting each `umi` segment at its position. Each `umi` segment is one UMI, and several are joined with `-`, 5' first. BAM: the `RX` tag |
@@ -223,5 +221,4 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 
 ## 8. Open points
 
-- The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence. Ion Torrent tag sequencing moves the tags into the BAM tags `ZT` and `YT`, so its FASTQ files lack them.
