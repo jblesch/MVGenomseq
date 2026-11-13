@@ -16,7 +16,7 @@
 |---|---|
 | record | one read in a FASTQ file: name line, read sequence, separator, quality scores |
 | read file | an entry of `files[]` with `fileType` `fastq` or `bam` |
-| kit base | a base that the library kit added: UMI, sample barcode or spacer |
+| kit base | a base that the library kit added at the same position in every record of a file: UMI, sample barcode or spacer |
 | segment | a run of consecutive bases in a record that all have the same `segmentType` |
 | layout | the ordered list of segments for one `readOrder` |
 | fixed layout | a layout in which every segment has a `length` |
@@ -131,7 +131,7 @@ Two rules complete the schema.
 |---|---|
 | key `R1`, `R2`, `I1` or `I2` | the `readOrder` of the read file that the layout describes |
 | layout, the value of a key | the segments of one record, listed 5' to 3' in the order they appear in the record |
-| `segmentType` | `insert` is template. `umi`, `sampleBarcode` and `spacer` are kit bases |
+| `segmentType` | `umi`, `sampleBarcode` and `spacer` hold kit bases. `insert` holds all other bases |
 | `length` | the segment has this number of bases in every record |
 | `minLength`, `maxLength` | the segment varies in length between these two bounds, both included |
 | `sequenceType` | `known`: the bases come from the set in `sequences`. `random`: they do not |
@@ -142,7 +142,6 @@ Further rules on the fields:
 
 - A layout MUST list every base of the record.
 - Only a platform without a fixed cycle count MAY use `minLength` and `maxLength`.
-- Locus primers of an amplicon panel are part of the `insert` segment. Adapter read-through is part of the last segment.
 - `labData.barcode` holds each index in forward orientation, never its reverse complement. For the second index, that is the sequence the kit lists for the forward strand workflow. Two indexes are joined with `-`, first index then second index. Where the library has no index, or the sequence is not known, `labData.barcode` is `null`.
 - Where a submitted file holds the barcode, a `sampleBarcode` segment declares it, with the index in forward orientation as its entry. This declaration takes precedence over `labData.barcode`, which MAY repeat the value or be `null`.
 
