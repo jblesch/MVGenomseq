@@ -635,7 +635,7 @@ zcat sample_R1.fastq.gz \
 | Length sum | the lengths in a layout do not sum to `readLength` | recount. An `N` cycle is not in the file and has no segment |
 | Entry length | an entry of `sequences` does not have `length` bases | enter every entry with exactly `length` bases. Enter a 6-mer of a 7-cycle UMI together with the base that follows it |
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
-| Known sequence | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
+| Known sequence (warning) | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
 | UMI composition (warning) | a `random` UMI shows one base in nearly all records at one position | that position is probably a spacer. Check the UMI length |
 | UMI tag complete | some records of a BAM carry `RX`, others do not | extract the UMI of every record, or of none |
 | One cycle count per entry | files of one `readOrder` have different `readLength` | put runs with different cycle counts into separate `labData` entries |
@@ -657,7 +657,7 @@ Extraction runs only after all three steps passed without an error.
 
 ## Reference code
 
-Python, standard library only: the rejection of duplicate keys, the metadata checks that look at one layout, the three data checks, and the sample barcode.
+Python, standard library only: the rejection of duplicate keys, the metadata checks that look at one layout, the three FASTQ data checks, and the sample barcode.
 
 ```python
 import gzip
@@ -759,19 +759,19 @@ def check_record_length(segments, sequences):
 
 
 def check_known_sequences(segments, sample):
-    """Return one error per known segment that matches in under 95 percent."""
-    errors = []
+    """Return one warning per known segment that matches in under 95 percent."""
+    warnings = []
     for index, (seg, start, stop) in enumerate(positions(segments)):
         if seg["sequenceType"] != "known" or not sample:
             continue
         hits = sum(segment_matches(seq[start:stop], seg) for seq in sample)
         rate = hits / len(sample)
         if rate < 0.95:
-            errors.append(
+            warnings.append(
                 f"known sequence: segment {index} ({seg['segmentType']}) at "
                 f"position {start} matches in {rate:.1%} of {len(sample)} records"
             )
-    return errors
+    return warnings
 
 
 def check_umi_composition(segments, sample):
@@ -850,8 +850,8 @@ layout_errors, layout_warnings = check_layout(segments)   # needs no file
 
 error = check_record_length(segments, read_sequences(path))   # every record
 sample = list(read_sequences(path, SAMPLE))                   # first 10,000 records
-errors = check_known_sequences(segments, sample)
-warnings = check_umi_composition(segments, sample)
+warnings = (check_known_sequences(segments, sample)
+            + check_umi_composition(segments, sample))
 ```
 
 ## Pipeline parameters
