@@ -223,12 +223,7 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 
 ## 8. Open points
 
-- A BAM submission records UMI usage only in its records (`RX`), not in the metadata.
 - Whether reads of platforms without a fixed cycle count end at a constant position relative to the molecule. Counting from the 3' end needs that, for example for a UMI at both ends of a long read.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence. Ion Torrent tag sequencing moves the tags into the BAM tags `ZT` and `YT`, so its FASTQ files lack them.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
-- Whether the record sample should be the first 10,000 records or records spread over the file.
-- Whether single-end submissions keep the key `R1`.
-- The entries and the number of the nonrandom UMI sets, and whether a vendor's set may be copied into a submission.
-- The switch-over date for UMI libraries whose existing files hold the UMI only in the read name.
