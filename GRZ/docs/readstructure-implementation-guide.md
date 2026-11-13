@@ -118,7 +118,7 @@ cycles, 6-mer:   TTGCAAT G ATTACAGGCT...   cycles 1 to 7: the UMI and the T. cyc
 
 Cycle 8 is the `N1` cycle, so it is not written to the file. Declare `umi` with `length` 7. Enter a 7-mer as it is. Enter a 6-mer with the `T` behind it, so `TTGCAA` becomes `TTGCAAT`. All entries then have 7 bases, and the declaration is exact. The sequences shown stand for the entries of the kit's list.
 
-**Agilent SureSelect XT HS2.** A read starts with 3 UMI bases and then 1 or 2 dark bases. Template follows directly, so the shorter start cannot be completed with a constant base. Declare the longer form.
+**Agilent SureSelect XT HS2.** A read starts with 3 UMI bases and then 1 or 2 dark bases: bases between the UMI and the template that carry no information. They are declared as a `spacer` segment. Template follows directly, so the shorter start cannot be completed with a constant base. Declare the longer form.
 
 | Conversion | Layout |
 |---|---|
