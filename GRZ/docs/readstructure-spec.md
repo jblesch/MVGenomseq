@@ -27,7 +27,7 @@
 
 ## 2. Requirements on submitted files
 
-Short reads are submitted as FASTQ. Long reads are submitted as BAM or FASTQ.
+Short reads are submitted as FASTQ, and long reads as BAM.
 
 These requirements apply to FASTQ.
 
@@ -160,7 +160,7 @@ No position is declared. It follows from the order of the segments and their len
 
 - The first segment has position 0.
 - Each further segment has the position of the segment before it plus that segment's `length`.
-- Behind a segment with `minLength` and `maxLength`, positions count from the 3' end: the last segment ends at the last base of the record. The variable segment covers the bases in between.
+- Behind a segment with `minLength` and `maxLength`, positions count from the 3' end: the last segment ends at the last base of the record. The variable segment covers the bases in between. Such segments MAY only be declared where every record ends at the same position relative to the molecule.
 
 A segment is found by counting bases, never by matching a sequence. The GRZ MUST NOT search a record for a sequence to decide where a segment starts or ends. Only the known sequence check reads `sequences`.
 
@@ -180,7 +180,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 
 | Check | What it tests | Result |
 |---|---|---|
-| **Layouts match files** | every `readOrder` among the FASTQ files of the `labData` entry has a layout in `readStructure`, and every layout has a FASTQ file with that `readOrder`. Where the FASTQ files carry no `readOrder`, as with long reads, the only key is `R1` | error |
+| **Layouts match files** | every `readOrder` among the FASTQ files of the `labData` entry has a layout in `readStructure`, and every layout has a FASTQ file with that `readOrder`. Where the FASTQ files carry no `readOrder`, the only key is `R1` | error |
 | **Minimum at most maximum** | `minLength` is at most `maxLength` | error |
 | **One insert per layout** | no layout holds more than one `insert` segment | error |
 | **Neighbouring segments differ** | no two neighbouring `random` segments have the same `segmentType` | warning |
@@ -223,6 +223,5 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 
 ## 8. Open points
 
-- Whether reads of platforms without a fixed cycle count end at a constant position relative to the molecule. Counting from the 3' end needs that, for example for a UMI at both ends of a long read.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
 - How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence. Ion Torrent tag sequencing moves the tags into the BAM tags `ZT` and `YT`, so its FASTQ files lack them.
