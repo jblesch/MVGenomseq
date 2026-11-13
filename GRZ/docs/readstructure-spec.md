@@ -7,7 +7,7 @@
 - `readStructure` is an object. Each key is a `readOrder`, and each value lists the segments of one record in 5' to 3' order.
 - Segments are found by counting bases from the start of the record, never by matching a sequence.
 - `readStructure` is required whenever a FASTQ file is submitted, and optional with BAM.
-- A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is not accepted. Adapter bases may be masked and must not be removed.
+- A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked and must not be removed.
 - A `known` segment is checked against the data, and a mismatch is an error.
 - The GRZ extracts the kit bases, using the declaration. The submitter extracts nothing.
 
