@@ -441,7 +441,7 @@
                 },
                 "barcode":{
                   "type":["string","null"],
-                  "description":"The index sequence of the sample, in forward orientation, never its reverse complement. For the second index, this is the sequence that the kit lists for the forward strand workflow. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value. A known sampleBarcode segment in readStructure repeats the corresponding part of this value.",
+                  "description":"The index sequence of the sample, in forward orientation, never its reverse complement. For the second index, this is the sequence that the kit lists for the forward strand workflow. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value. Where a submitted file holds the barcode, a sampleBarcode segment in readStructure declares it and takes precedence. This value may then repeat it or be null.",
                   "pattern":"^[ACGT]+(-[ACGT]+)?$"
                 },
                 "sequencingLayout":{
@@ -651,7 +651,7 @@
                               "I1",
                               "I2"
                             ],
-                            "description":"The read that the file holds: R1 and R2 for the data reads, I1 and I2 for the index reads. An index-read file is submitted only when the UMI was sequenced in its index cycles. A plain sample index is recorded in barcode, and its file is not submitted."
+                            "description":"The read that the file holds: R1 and R2 for the data reads, I1 and I2 for the index reads. Index-read files must be submitted where the UMI was sequenced in index cycles, and may be submitted otherwise. Where one is submitted, every index read of the run is."
                           },
                           "readLength":{
                             "type":"integer",
@@ -691,15 +691,11 @@
     },
     "indexReadLayout":{
       "type":"array",
-      "description":"The layout of an index read (I1 or I2): the segments of one record, 5' to 3'. It holds a umi segment and no insert segment.",
+      "description":"The layout of an index read (I1 or I2): the segments of one record, 5' to 3'. It holds no insert segment.",
       "minItems":1,
       "items":{
         "allOf":[{"$ref":"#/$defs/readSegment"}],
         "properties":{"segmentType":{"enum":["umi","sampleBarcode","spacer"]}}
-      },
-      "contains":{
-        "required":["segmentType"],
-        "properties":{"segmentType":{"const":"umi"}}
       }
     },
     "readSegment":{
@@ -728,12 +724,12 @@
           "minimum":1
         },
         "sequenceType":{
-          "description":"'known': the bases come from the set in sequences, and the validator checks them against the data. 'random': they do not. An insert is always random.",
+          "description":"'known': the bases come from the set in sequences, and the validator checks them against the data. 'random': they do not. An insert is always random, and a sampleBarcode always known.",
           "enum":["known","random"]
         },
         "sequences":{
           "type":"array",
-          "description":"The set that a known segment draws from, inline. A set of one entry is a fixed sequence. Every entry has the length of the segment. In a sampleBarcode segment, the entries repeat the corresponding part of barcode as stored there.",
+          "description":"The set that a known segment draws from, inline. A set of one entry is a fixed sequence. Every entry has the length of the segment. A sampleBarcode segment holds one entry: its index in forward orientation.",
           "minItems":1,
           "uniqueItems":true,
           "items":{"type":"string","pattern":"^[ACGTN]+$"}
@@ -777,6 +773,13 @@
           },
           "then":{"properties":{"sequenceType":{"const":"random"}}},
           "else":{"properties":{"minLength":false,"maxLength":false}}
+        },
+        {
+          "if":{
+            "required":["segmentType"],
+            "properties":{"segmentType":{"const":"sampleBarcode"}}
+          },
+          "then":{"properties":{"sequenceType":{"const":"known"},"sequences":{"maxItems":1}}}
         }
       ]
     }

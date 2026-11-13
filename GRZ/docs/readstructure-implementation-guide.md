@@ -62,9 +62,10 @@ Declare what is in the file. Each part of `OverrideCycles` maps to one decision:
 | `Y151` in a data read | 151 template bases | `insert`, `length` 151 |
 | `U3` in a data read, with `TrimUMI,0` | 3 UMI bases | `umi`, `length` 3 |
 | `N2` | not written | no segment |
-| `I8` in an index read without a UMI | in no submitted file | no layout. `labData.barcode` holds the value |
+| `I8` in an index read, with no index-read files submitted | in no submitted file | no layout. `labData.barcode` holds the value |
 | `I8U9` in the first index read, with `CreateFastqForIndexReads,1` | 17 bases in the I1 file | layout `I1`: `sampleBarcode` 8, then `umi` 9 |
 | `U10` in the second index read, with `CreateFastqForIndexReads,1` | 10 bases in the I2 file | layout `I2`: `umi` 10 |
+| `I8` in an index read, with index-read files submitted | 8 bases in that file | `sampleBarcode` 8, `known`, with the index as its entry |
 
 Three rules follow from the table.
 
@@ -77,7 +78,7 @@ Two more rules keep a declaration unambiguous.
 - A layout for R1 or R2 has exactly one `insert` segment. A layout for I1 or I2 has none.
 - Do not split a segment. A 7 base UMI is one `umi` segment of `length` 7, not two segments of 3 and 4.
 
-The barcode itself has a field of its own, `labData.barcode`.
+Where a submitted file holds the barcode, a `sampleBarcode` segment declares it. That segment is always `known`, and its one entry is the index. `labData.barcode` may repeat the value, or be `null`. Where no submitted file holds the barcode, `labData.barcode` holds it:
 
 - It holds each index in forward orientation. For the second index, take the sequence that the kit lists for the forward strand workflow. Two indexes are joined with `-`, first index then second index, for example `TAAGGCGA-AAGGCTAT`.
 - If the library has no index, or you do not know its sequence, the value is `null`. Do not write `na`.
@@ -143,7 +144,7 @@ AdapterRead2,<adapter sequence for Read 2>
 
 - `TrimUMI,0` leaves the UMI in the read sequence. The default is `1`. With the default the UMI is cut out of the read and exists only in the read name. Such a file breaks the requirement "UMI in the read sequence" and is not accepted. With `TrimUMI,0` BCL Convert still copies the UMI into the read name. That is harmless, because the read name is not read.
 - `AdapterBehavior,mask` replaces adapter bases with `N` and keeps every record at full length. The value `trim` shortens records. Such a file breaks the requirement "No trimming" and is not accepted. `trim` is the default as soon as the sample sheet names an adapter. So set `mask` explicitly, or name no adapter.
-- Add `CreateFastqForIndexReads,1` only when the UMI sits in the index cycles. BCL Convert writes the index FASTQ of a UMI only together with `TrimUMI,0`.
+- Add `CreateFastqForIndexReads,1` when you submit index-read files. You must submit them when the UMI sits in the index cycles. BCL Convert writes the index FASTQ of a UMI only together with `TrimUMI,0`.
 
 Data that was already converted with `TrimUMI,1` has to be converted again from the per-cycle data. No tool can rebuild the file, because the read name holds the UMI bases without their quality scores.
 
@@ -277,12 +278,15 @@ Every entry has exactly the `length` of the segment. The entries of the vendor s
 
 IDT Dual Index Adapters with UMIs, converted with `Y151;I8U9;I8;Y151`, `TrimUMI,0` and `CreateFastqForIndexReads,1`. The first index read holds the 8 index bases and then 9 UMI bases. BCL Convert writes the whole index read into the I1 file, so the file holds both.
 
-Submit three files: R1, R2 and I1. Leave the I2 file out. It holds only the second index, and `labData.barcode` already records that.
+Submit four files: R1, R2, I1 and I2. The I2 file holds only the second index. It is submitted because every index read of the run is submitted once one of them is.
 
 ```
 I1 record: ACGTACGT ACGGTCAAG
 position:  0        8
            sampleBarcode 8, then umi 9
+
+I2 record: AAGGCTAT
+           sampleBarcode 8
 ```
 
 ```json
@@ -291,7 +295,8 @@ position:  0        8
   "files": [
     { "fileType": "fastq", "readOrder": "R1", "readLength": 151 },
     { "fileType": "fastq", "readOrder": "R2", "readLength": 151 },
-    { "fileType": "fastq", "readOrder": "I1", "readLength": 17 }
+    { "fileType": "fastq", "readOrder": "I1", "readLength": 17 },
+    { "fileType": "fastq", "readOrder": "I2", "readLength": 8 }
   ],
   "readStructure": {
     "R1": [
@@ -304,18 +309,22 @@ position:  0        8
       { "segmentType": "sampleBarcode", "length": 8, "sequenceType": "known",
         "sequences": ["ACGTACGT"], "reverseComplement": false },
       { "segmentType": "umi", "length": 9, "sequenceType": "random" }
+    ],
+    "I2": [
+      { "segmentType": "sampleBarcode", "length": 8, "sequenceType": "known",
+        "sequences": ["AAGGCTAT"], "reverseComplement": false }
     ]
   }
 }
 ```
 
-The `sampleBarcode` entry is the first part of `labData.barcode` for this sample. It is the only value in this example that changes per sample. You may also declare this segment as `random`. It then has no `sequences`, and the GRZ skips the bases all the same.
+The two `sampleBarcode` entries declare the barcode of this sample, `ACGTACGT-AAGGCTAT`. They are the only values in this example that change per sample. `labData.barcode` may repeat the value, or be `null`. The I2 entry is the second index in forward orientation. On an instrument that reads the second index from the other strand, the I2 file shows its reverse complement, and `reverseComplement` is `true`.
 
 ### UMI in the second index read
 
 Agilent SureSelect XT HS, converted with `Y151;I8;U10;Y151`, `TrimUMI,0` and `CreateFastqForIndexReads,1`. The UMI takes the place of the second index, so the second index read holds 10 UMI bases and nothing else.
 
-Submit three files: R1, R2 and I2. Leave the I1 file out. It holds only the index.
+Submit four files: R1, R2, I1 and I2. The I1 file holds only the index.
 
 ```json
 {
@@ -323,6 +332,7 @@ Submit three files: R1, R2 and I2. Leave the I1 file out. It holds only the inde
   "files": [
     { "fileType": "fastq", "readOrder": "R1", "readLength": 151 },
     { "fileType": "fastq", "readOrder": "R2", "readLength": 151 },
+    { "fileType": "fastq", "readOrder": "I1", "readLength": 8 },
     { "fileType": "fastq", "readOrder": "I2", "readLength": 10 }
   ],
   "readStructure": {
@@ -332,12 +342,18 @@ Submit three files: R1, R2 and I2. Leave the I1 file out. It holds only the inde
     "R2": [
       { "segmentType": "insert", "length": 151, "sequenceType": "random" }
     ],
+    "I1": [
+      { "segmentType": "sampleBarcode", "length": 8, "sequenceType": "known",
+        "sequences": ["ACGTACGT"], "reverseComplement": false }
+    ],
     "I2": [
       { "segmentType": "umi", "length": 10, "sequenceType": "random" }
     ]
   }
 }
 ```
+
+The library has one index. Its `sampleBarcode` entry declares the barcode, `ACGTACGT`.
 
 ### MGI read barcode
 
@@ -372,7 +388,7 @@ position:                100      108        118
 }
 ```
 
-`sequences` repeats the two parts of `labData.barcode` as they are stored. `reverseComplement: true` says that the record shows `CCAACGTGAT` where the stored value is `ATCACGTTGG`. The order of the parts inside the read barcode depends on the kit.
+`sequences` holds the two barcodes in forward orientation. `reverseComplement: true` says that the record shows `CCAACGTGAT` where the declared value is `ATCACGTTGG`. The sample barcode is the two entries in read order, `ATCACGTTGG-CGTGATAGCC`. The order of the parts inside the read barcode depends on the kit.
 
 ## Translate Illumina settings with code
 
@@ -380,9 +396,9 @@ The function `read_structure_from_illumina` turns BCL Convert settings into `rea
 
 | Setting | What the function does with it |
 |---|---|
-| `OverrideCycles` | `Y` becomes `insert` and `U` becomes `umi`. `N` gives no segment. `I` gives a `sampleBarcode` segment only in an index read that also holds a UMI. An index read without a UMI gives no layout |
+| `OverrideCycles` | `Y` becomes `insert` and `U` becomes `umi`. `N` gives no segment. `I` gives a `sampleBarcode` segment. Index reads give layouts where one of them holds a UMI, or where `submit_index_reads` is 1 |
 | `TrimUMI` | must be 0 where `U` cycles exist. The default 1 is refused |
-| `CreateFastqForIndexReads` | must be 1 where an index read holds a UMI |
+| `CreateFastqForIndexReads` | must be 1 where index-read files are submitted |
 | `AdapterBehavior` | `trim` is refused. `trim` is the default as soon as the sample sheet names an adapter |
 | `Index`, `Index2` | the value of a `sampleBarcode` segment |
 
@@ -414,19 +430,20 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
                                  adapter_behavior=None,
                                  index=None, index2=None,
                                  index2_reverse_complement=None,
-                                 umi_sequences=None):
+                                 umi_sequences=None, submit_index_reads=0):
     """Translate BCL Convert settings into readStructure and readLength.
 
     override_cycles               OverrideCycles, for example "U3N2Y146;I8;I8;U3N2Y146"
     trim_umi                      TrimUMI. The BCL Convert default is 1
     create_fastq_for_index_reads  CreateFastqForIndexReads. The default is 0
     adapter_behavior              AdapterBehavior: None, "mask" or "trim"
-    index, index2                 the index values of this sample, as labData.barcode holds them
+    index, index2                 the index values of this sample, in forward orientation
     index2_reverse_complement     True where the I2 file shows the reverse complement of index2
     umi_sequences                 the set of a nonrandom UMI kit, otherwise None
+    submit_index_reads            1 to submit the index-read files although none holds a UMI
 
     A read with Y cycles is a data read: R1, then R2. Every other read is an
-    index read: I1, then I2.
+    index read: I1, then I2. Where one index-read file is submitted, all are.
     """
     if str(adapter_behavior).strip().lower() == "trim":
         raise ValueError("AdapterBehavior,trim removes bases. Use AdapterBehavior,mask.")
@@ -434,6 +451,11 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
     has_umi = any(letter == "U" for read in reads for letter, _ in read)
     if has_umi and is_on(trim_umi):
         raise ValueError("TrimUMI,1 moves the UMI into the read name. Use TrimUMI,0.")
+    index_umi = any("U" in letters and "Y" not in letters
+                    for letters in ({letter for letter, _ in read} for read in reads))
+    submit_index = index_umi or is_on(submit_index_reads)
+    if submit_index and not is_on(create_fastq_for_index_reads):
+        raise ValueError("index-read files need CreateFastqForIndexReads,1.")
 
     read_structure, read_length = {}, {}
     data_reads = index_reads = 0
@@ -447,10 +469,8 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
         else:                                     # an index read: I1, then I2
             index_reads += 1
             key = f"I{index_reads}"
-            if "U" not in letters:
-                continue                          # index only: the file is not submitted
-            if not is_on(create_fastq_for_index_reads):
-                raise ValueError(f"the UMI is in {key}. Use CreateFastqForIndexReads,1.")
+            if not submit_index:
+                continue                          # no index-read file is submitted
 
         segments = []
         for letter, count in read:
@@ -469,7 +489,7 @@ def read_structure_from_illumina(override_cycles, trim_umi=1,
             elif letter == "U":
                 segment = {"segmentType": "umi", "length": count,
                            "sequenceType": "random"}
-            else:                                 # I beside a UMI in an index read
+            else:                                 # I: the index of this index read
                 value = index if key == "I1" else index2
                 reverse = False if key == "I1" else index2_reverse_complement
                 if value is None or reverse is None:
@@ -607,9 +627,8 @@ zcat sample_R1.fastq.gz \
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
 | Known sequence | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
 | UMI composition (warning) | a `random` UMI shows one base in nearly all records at one position | that position is probably a spacer. Check the UMI length |
-| Barcode agreement | a `sampleBarcode` entry differs from `labData.barcode` | copy the value from `labData.barcode`. Express the orientation with `reverseComplement`, not by rewriting the sequence |
 | One cycle count per entry | files of one `readOrder` have different `readLength` | put runs with different cycle counts into separate `labData` entries |
-| Schema: an `I1` or `I2` layout without a `umi` segment | an index-read file without a UMI was declared | do not submit that file |
+| Schema: a `sampleBarcode` segment that is `random`, or has two entries | the barcode was declared without its value, or with two values | declare it `known`, with the index in forward orientation as its one entry |
 | Schema: an `R1` or `R2` layout without an `insert` segment | a data read was declared without template | check which file the layout belongs to |
 | Schema: `minLength` on a segment that is not an `insert` | a kit segment was declared with a varying length | declare the number of cycles the kit prescribes as `length` |
 
@@ -627,7 +646,7 @@ Extraction runs only after all three steps passed without an error.
 
 ## Reference code
 
-Python, standard library only. The code shows the rejection of duplicate keys, the metadata checks that look at one layout, and the three data checks, all as the specification states them. It is written to be read, not to be fast.
+Python, standard library only. The code shows the rejection of duplicate keys, the metadata checks that look at one layout, and the three data checks, all as the specification states them. It also shows how a pipeline finds the sample barcode. It is written to be read, not to be fast.
 
 ```python
 import gzip
@@ -762,6 +781,15 @@ def check_umi_composition(segments, sample):
     return warnings
 
 
+def sample_barcode(lab_data):
+    """Return the sample barcode. A sampleBarcode segment wins over labData.barcode."""
+    parts = [seg["sequences"][0]
+             for key in ("R1", "R2", "I1", "I2")
+             for seg in lab_data.get("readStructure", {}).get(key, [])
+             if seg["segmentType"] == "sampleBarcode"]
+    return "-".join(parts) if parts else lab_data.get("barcode")
+
+
 FGBIO_LETTER = {"insert": "T", "umi": "M", "sampleBarcode": "S", "spacer": "S"}
 
 
@@ -823,8 +851,8 @@ Every parameter below is derived from `readStructure`. Nothing is read from the 
 | Inline UMI | R1, R2 | `3M146T` `3M146T` |
 | Inline UMI with dark bases | R1, R2 | `3M2S146T` `3M2S146T` |
 | Nonrandom UMI | R1, R2 | `7M143T` `7M143T` |
-| UMI behind the index | R1, R2, I1 | `151T` `151T` `8S9M` |
-| UMI in the second index read | R1, R2, I2 | `151T` `151T` `10M` |
+| UMI behind the index | R1, R2, I1, I2 | `151T` `151T` `8S9M` `8S` |
+| UMI in the second index read | R1, R2, I1, I2 | `151T` `151T` `8S` `10M` |
 | MGI read barcode | R1, R2 | `150T` `100T8M10S10S` |
 
 Extraction into an unaligned BAM, shown for "Inline UMI with dark bases". fgbio writes the `M` bases into `RX` and drops the `S` bases:
@@ -837,9 +865,9 @@ fgbio FastqToBam \
   --output sample.unaligned.bam
 ```
 
-For "UMI behind the index" the I1 file is a third input with the read structure `8S9M`. For "UMI in the second index read" the I2 file is the third input, with `10M`.
+For "UMI behind the index" the I1 and I2 files are the third and fourth inputs, with the read structures `8S9M` and `8S`. For "UMI in the second index read" they have `8S` and `10M`.
 
-The pipeline does not take the sample barcode from the read. The file is already demultiplexed, and `labData.barcode` holds the value. So the pipeline never applies `reverseComplement` to a barcode, and only the known sequence check reads that field. One case is left: a nonrandom UMI with `reverseComplement: true`. There the whitelist is written as the reverse complement of `sequences`.
+The pipeline does not take the sample barcode from the read bases. The file is already demultiplexed, and the declaration holds the value. The function `sample_barcode` in the reference code returns it: the entries of the `sampleBarcode` segments where they exist, otherwise `labData.barcode`. So the pipeline never applies `reverseComplement` to a barcode, and only the known sequence check reads that field. One case is left: a nonrandom UMI with `reverseComplement: true`. There the whitelist is written as the reverse complement of `sequences`.
 
 **DRAGEN.** `--umi-library-type` follows from the placement and the scheme of the `umi` segments. The function `dragen_umi_library_type` in the reference code implements this table:
 
@@ -866,10 +894,11 @@ For a UMI in an index-read file, as in the examples "UMI behind the index" and "
 | `U3N2Y146;I8;I8;U3N2Y146` with `TrimUMI,0` | the example "Inline UMI" |
 | `Y151;I8;I8;Y151`, then `split_insert` with `umi` 3 and `spacer` 2 | the example "Inline UMI with dark bases" |
 | `U7N1Y143;I8;I8;U7N1Y143` with `TrimUMI,0` and the two placeholder sequences | the example "Nonrandom UMI" |
-| `Y151;I8U9;I8;Y151` with `TrimUMI,0`, `CreateFastqForIndexReads,1` and the index `ACGTACGT` | the example "UMI behind the index" |
-| `Y151;I8;U10;Y151` with `TrimUMI,0` and `CreateFastqForIndexReads,1` | the example "UMI in the second index read" |
+| `Y151;I8U9;I8;Y151` with `TrimUMI,0`, `CreateFastqForIndexReads,1`, the indexes `ACGTACGT` and `AAGGCTAT`, and `index2_reverse_complement` false | the example "UMI behind the index" |
+| `Y151;I8;U10;Y151` with `TrimUMI,0`, `CreateFastqForIndexReads,1` and the index `ACGTACGT` | the example "UMI in the second index read" |
 | `U7N1Y143;I8;I8;U7N1Y143` with the default `TrimUMI,1` | error |
 | `Y151;I8U9;I8;Y151` with `TrimUMI,0` and the default `CreateFastqForIndexReads,0` | error |
+| `Y151;I8U9;I8;Y151` with `TrimUMI,0`, `CreateFastqForIndexReads,1` and the first index only | error, the I2 file holds the second index |
 | any setting with `AdapterBehavior,trim` | error |
 
 **Data checks on whole records.** The layout is that of the example "Nonrandom UMI" with a shorter insert: `umi` 7 `known` with the entries `ACGTACG` and `TTGCAAT`, then `insert` 13. The declared record length is 20.
@@ -915,6 +944,16 @@ For a UMI in an index-read file, as in the examples "UMI behind the index" and "
 | `insert` with `minLength` 151 and `maxLength` 151 | Minimum below maximum | error |
 | `umi` 7 `known` with the entry `TTGCAA`, then `insert` 143 | Entry length | error, the 6-mer lacks the `T` that follows it |
 
+**Sample barcode.** These rows test the function `sample_barcode`.
+
+| `labData.barcode` | `sampleBarcode` entries | Expected |
+|---|---|---|
+| `"TAAGGCGA-AAGGCTAT"` | none | `TAAGGCGA-AAGGCTAT` |
+| `null` | I1 `ACGTACGT`, I2 `AAGGCTAT` | `ACGTACGT-AAGGCTAT` |
+| `"ACGTACGT-AAGGCTAT"` | I1 `ACGTACGT`, I2 `AAGGCTAT` | `ACGTACGT-AAGGCTAT` |
+| `null` | R2 `ATCACGTTGG`, then `CGTGATAGCC` | `ATCACGTTGG-CGTGATAGCC` |
+| `null` | none | `null` |
+
 **Schema checks.** Each row is one `readStructure` value.
 
 | Value | Expected |
@@ -923,10 +962,12 @@ For a UMI in an index-read file, as in the examples "UMI behind the index" and "
 | the key `R1` twice | rejected while parsing, before the schema runs |
 | a key other than `R1`, `R2`, `I1` and `I2` | invalid |
 | an object without a key | invalid |
-| an `I1` layout with a `sampleBarcode` segment only | invalid, an index-read layout needs a `umi` segment |
+| an `I1` layout with a `sampleBarcode` segment only | valid, an index-read file may hold only the index |
 | an `insert` segment with `sequenceType` `known` | invalid |
 | a `known` segment without `reverseComplement` | invalid |
 | a `random` segment with `sequences` | invalid |
+| a `sampleBarcode` segment with `sequenceType` `random` | invalid |
+| a `sampleBarcode` segment with two entries in `sequences` | invalid |
 | a segment with both `length` and `minLength` | invalid |
 | an `R1` layout without an `insert` segment | invalid |
 | an `I1` layout with an `insert` segment | invalid |

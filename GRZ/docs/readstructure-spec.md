@@ -59,7 +59,7 @@ These requirements apply to FASTQ submissions.
 | **Kit bases stay in the read** | The read sequence MUST hold every base the demultiplexer wrote for that read, kit bases included. The submitter MUST NOT extract a segment. | [GRZ] |
 | **No trimming** | Adapter bases MAY be masked with `N` and MUST NOT be removed. Quality trimming, polyG trimming, length filtering and read discarding MUST NOT be applied. | [GRZ] |
 | **UMI in the read sequence** | A UMI MUST sit in the read sequence of a submitted file: in R1, in R2, or in an index-read file. A UMI that exists only in the read name does not satisfy this requirement. On BCL Convert, a UMI read in `U` cycles needs `TrimUMI,0`. A UMI read in `Y` cycles stays in the read sequence anyway. | [ILMN] [GRZ] |
-| **Index-read file only with a UMI** | An index-read file (`readOrder` `I1` or `I2`) MUST be submitted when the UMI was sequenced in those index cycles. It MUST NOT be submitted otherwise. | [GRZ] |
+| **Index-read files complete** | Index-read files (`readOrder` `I1` and `I2`) MUST be submitted when the UMI was sequenced in index cycles, and MAY be submitted otherwise. Where any index-read file is submitted, every index read of the run MUST be submitted. | [GRZ] |
 | **One cycle count per entry** | With a fixed layout, all files of that `readOrder` within one `labData` entry MUST have the same `readLength`. Runs with different cycle counts go into separate `labData` entries. | [GRZ] |
 | **Read name is not read** | No requirement and no check in this specification reads the read name or the read comment. | [GRZ] |
 
@@ -98,9 +98,7 @@ These requirements apply to FASTQ submissions.
     "items": {
       "allOf": [ { "$ref": "#/$defs/readSegment" } ],
       "properties": { "segmentType": { "enum": ["umi", "sampleBarcode", "spacer"] } }
-    },
-    "contains": { "required": ["segmentType"],
-                  "properties": { "segmentType": { "const": "umi" } } }
+    }
   },
 
   "readSegment": {
@@ -137,17 +135,22 @@ These requirements apply to FASTQ submissions.
       { "if":   { "required": ["segmentType"],
                   "properties": { "segmentType": { "const": "insert" } } },
         "then": { "properties": { "sequenceType": { "const": "random" } } },
-        "else": { "properties": { "minLength": false, "maxLength": false } } }
+        "else": { "properties": { "minLength": false, "maxLength": false } } },
+      { "if":   { "required": ["segmentType"],
+                  "properties": { "segmentType": { "const": "sampleBarcode" } } },
+        "then": { "properties": { "sequenceType": { "const": "known" },
+                                  "sequences": { "maxItems": 1 } } } }
     ]
   }
 }
 ```
 
-The definitions state three things about layouts.
+The definitions state four things about layouts and segments.
 
 - An `R1` or `R2` layout holds an `insert` segment.
-- An `I1` or `I2` layout holds a `umi` segment and no `insert` segment.
+- An `I1` or `I2` layout holds no `insert` segment.
 - Only an `insert` segment may use `minLength` and `maxLength`.
+- A `sampleBarcode` segment is always `known` and holds one entry.
 
 Three rules complete the schema.
 
@@ -166,7 +169,7 @@ Which layouts `readStructure` must hold is not part of the schema. The check "La
 | `segmentType` | yes | `insert` is template. `umi`, `sampleBarcode` and `spacer` are kit bases |
 | `length` | one of the two length forms | the segment has this number of bases in every record |
 | `minLength`, `maxLength` | one of the two length forms | the segment varies in length between these two bounds, both included. Allowed on an `insert` segment only |
-| `sequenceType` | yes | `known`: the bases come from the set in `sequences`. `random`: they do not. An `insert` is always `random` |
+| `sequenceType` | yes | `known`: the bases come from the set in `sequences`. `random`: they do not. An `insert` is always `random`, and a `sampleBarcode` always `known` |
 | `sequences` | for `known`; forbidden for `random` | the set, inline. A set of one entry is a fixed sequence. Entries are unique |
 | `reverseComplement` | for `known`; forbidden for `random` | `true`: the bases in the record are the reverse complement of the entries in `sequences`. `false`: they are the entries as written. No default |
 
@@ -176,7 +179,7 @@ Further rules on the fields:
 - A cycle that the demultiplexer did not write (`N` in `OverrideCycles`) is not in the record and MUST NOT be declared. [ILMN] [GRZ]
 - `labData.barcode` holds each index sequence in forward orientation, never its reverse complement. For the first index, that is the sequence the kit lists for the sample sheet. For the second index, kit documentation often lists two sequences, one per instrument workflow. `labData.barcode` holds the one listed for the forward strand workflow. A sample with two indexes has two different sequences. They are joined with `-`, first index then second index. [GRZ]
 - Where the library has no index, or the sequence is not known, `labData.barcode` is `null`. The key is still required. The string `na` is not a value. [GRZ]
-- A `sampleBarcode` segment that is `known` MUST repeat the corresponding part of `labData.barcode` as stored there. `reverseComplement` then states how the bases in the record relate to that stored value. [GRZ]
+- Where a submitted file holds the barcode, a `sampleBarcode` segment declares it. Its one entry is that index in forward orientation, and `reverseComplement` states how the record shows it. This declaration takes precedence over `labData.barcode`, which MAY repeat the value or be `null`. No check compares the two. [GRZ]
 - Locus primers of an amplicon panel are part of the `insert` segment. Adapter read-through is part of the last segment. [GRZ]
 - The variable-length form is for platforms without a fixed cycle count, such as Ion Torrent. A platform that sequences by synthesis with a fixed cycle count MUST use `length` for every segment. [GRZ]
 
@@ -245,7 +248,6 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 | **Length sum** | in a fixed layout, the lengths sum to `files[].readLength` for that `readOrder` | error |
 | **Length range** | in a layout with a variable segment: the fixed lengths plus `minLength` is at most `files[].readLength`, and `files[].readLength` is at most the fixed lengths plus `maxLength` | error |
 | **Entry length** | every entry in `sequences` has the segment's `length` | error |
-| **Barcode agreement** | where a `sampleBarcode` segment is `known`, each entry in `sequences` equals the corresponding part of `labData.barcode`, compared as strings. A `known` `sampleBarcode` segment beside a `labData.barcode` of `null` fails the check | error |
 | **One cycle count per entry** | the requirement of the same name in section 2: with a fixed layout, all files of that `readOrder` in the `labData` entry have the same `files[].readLength` | error |
 
 ### Data checks
@@ -267,7 +269,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 
 ## 8. Derived values
 
-A pipeline derives these values from `readStructure`. No other field declares them. [GRZ]
+A pipeline derives these values from `readStructure`. Only the sample barcode falls back to another field, `labData.barcode`. [GRZ]
 
 | Value | Derivation |
 |---|---|
@@ -277,7 +279,7 @@ A pipeline derives these values from `readStructure`. No other field declares th
 | UMI scheme | `sequenceType` of the `umi` segment: `random` or `known` |
 | nonrandom UMI set | `sequences` of the `umi` segment |
 | UMI tag | written at the GRZ by cutting each `umi` segment at its position |
-| sample barcode | taken from `labData.barcode`, never from the read. `sampleBarcode` and `spacer` bases are cut and discarded |
+| sample barcode | the entries of the `sampleBarcode` segments, in the order `R1`, `R2`, `I1`, `I2` and 5' to 3' within a layout, joined with `-`. Without such a segment, `labData.barcode`. The value is never taken from the read bases. `sampleBarcode` and `spacer` bases are cut and discarded |
 
 The pipeline therefore never applies `reverseComplement` to a barcode. Only the known sequence check reads that field.
 
