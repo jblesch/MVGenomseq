@@ -1,5 +1,8 @@
 # `readStructure` implementation guide
 
+> [!WARNING]
+> **Preliminary and subject to change.** The examples, the conversion settings and the reference code in this guide can still change. Do not build production tooling on them yet.
+
 **tl;dr**
 
 - **A library without a UMI:** copy the example "WGS without UMI" and set `length` to your cycle count.
