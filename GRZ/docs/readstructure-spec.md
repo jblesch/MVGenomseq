@@ -33,6 +33,7 @@ Every requirement and every check in this file has a name that says what it does
 | Term | Meaning |
 |---|---|
 | record | one read in a FASTQ file: name line, read sequence, separator, quality scores |
+| read file | an entry of `files[]` with `fileType` `fastq` or `bam` |
 | kit base | a base that the library kit added: UMI, sample barcode or spacer |
 | segment | a run of consecutive bases in a record that all have the same `segmentType` |
 | layout | the ordered list of segments for one `readOrder` |
@@ -40,7 +41,7 @@ Every requirement and every check in this file has a name that says what it does
 | position | the 0-based index of a segment's first base, counted from the 5' end of the record |
 | record sample | the first 10,000 records of a file, or all records where the file has fewer |
 
-`readOrder`, `readLength`, `sequencingLayout` and `fileType` are fields of `grz-schema.json` and keep their meaning there. `files[]` stands for `labData.sequenceData.files[]`. `labData.barcode` is a field of that schema as well. Section 4 states what this specification requires of it.
+`readOrder`, `readLength`, `sequencingLayout` and `fileType` are fields of `grz-schema.json` and keep their meaning there. `files[]` stands for `labData.sequenceData.files[]`. Short reads are submitted as FASTQ, and long reads as BAM. This is the split that "QS durch GRZ MVGenomSeq" (version 01.4, Tabellen 2 und 3) assumes. `labData.barcode` is a field of that schema as well. Section 4 states what this specification requires of it.
 
 A marker in square brackets says where a rule comes from.
 
@@ -240,7 +241,7 @@ A submission with an error MUST be rejected. A warning is reported and does not 
 
 | Check | What it tests | Result |
 |---|---|---|
-| **Layouts match files** | every `readOrder` among the read files of the `labData` entry has a layout in `readStructure`, and every layout has a file with that `readOrder`. Where the read files carry no `readOrder`, the only key is `R1` | error |
+| **Layouts match files** | where `readStructure` is given: every `readOrder` among the read files of the `labData` entry has a layout in `readStructure`, and every layout has a read file with that `readOrder`. Where the read files carry no `readOrder`, as with a long-read BAM, the only key is `R1` | error |
 | **Variable segment last** | a segment with `minLength` and `maxLength` is the last segment of its layout | error |
 | **Minimum below maximum** | `minLength` is less than `maxLength` | error |
 | **One insert per layout** | no layout holds more than one `insert` segment. The schema already requires one in an `R1` or `R2` layout and forbids it in an `I1` or `I2` layout | error |
