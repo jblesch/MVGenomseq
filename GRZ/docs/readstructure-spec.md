@@ -144,7 +144,7 @@ Two rules complete the schema.
 Further rules on the fields:
 
 - A layout MUST list every base of the record.
-- Only a platform without a fixed cycle count, such as Ion Torrent, MAY use `minLength` and `maxLength`.
+- Only a platform without a fixed cycle count MAY use `minLength` and `maxLength`.
 - Locus primers of an amplicon panel are part of the `insert` segment. Adapter read-through is part of the last segment.
 - `labData.barcode` holds each index in forward orientation, never its reverse complement. For the second index, that is the sequence the kit lists for the forward strand workflow. Two indexes are joined with `-`, first index then second index. Where the library has no index, or the sequence is not known, `labData.barcode` is `null`.
 - Where a submitted file holds the barcode, a `sampleBarcode` segment declares it, with the index in forward orientation as its entry. This declaration takes precedence over `labData.barcode`, which MAY repeat the value or be `null`.
@@ -223,9 +223,9 @@ A pipeline derives these values from `readStructure`. Only the sample barcode fa
 - A BAM submission with a UMI in `RX` tags and no `readStructure` records UMI usage nowhere.
 - A long-read library with a UMI at both ends of a variable insert cannot be declared.
 - The UMI placement of a library with a `umi` segment in two layouts other than `R1` and `R2`, for example in `I1` and `I2`.
-- Variable-length platforms that submit FASTQ. How the requirement "No trimming" applies to Ion Torrent is undecided, and so is whether Ion Torrent FASTQ files keep the molecular tag and the barcode in the read sequence.
+- How the requirement "No trimming" applies to platforms without a fixed cycle count, and whether their FASTQ files keep the UMI and the barcode in the read sequence.
 - Whether an `N` inside an entry of `sequences` is a wildcard. Until that is decided it is compared as written, so it matches nothing but a masked base.
-- Whether the record sample should be the first 10,000 records or records spread over the file. The first records of a file come from the edge of a tile.
+- Whether the record sample should be the first 10,000 records or records spread over the file.
 - The key for single-end submissions. It is `R1` today because `files[].readOrder` offers nothing else.
 - The entries and the number of the nonrandom UMI sets, and whether a vendor's set may be copied into a submission.
 - The switch-over date for UMI libraries whose existing files hold the UMI only in the read name.
