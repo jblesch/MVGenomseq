@@ -636,7 +636,6 @@ zcat sample_R1.fastq.gz \
 | Entry length | an entry of `sequences` does not have `length` bases | enter every entry with exactly `length` bases. Enter a 6-mer of a 7-cycle UMI together with the base that follows it |
 | Record length | records are shorter or longer than declared | run the first command of the section above. The cause is a trimmed UMI, trimmed adapters, or a wrong `length` |
 | Known sequence (warning) | a `known` segment is not where you declared it | check the UMI length, the spacer base and `reverseComplement` |
-| UMI composition (warning) | a `random` UMI shows one base in nearly all records at one position | that position is probably a spacer. Check the UMI length |
 | UMI tag complete | some records of a BAM carry `RX`, others do not | extract the UMI of every record, or of none |
 | One cycle count per entry | files of one `readOrder` have different `readLength` | put runs with different cycle counts into separate `labData` entries |
 | Schema: a `sampleBarcode` segment that is `random`, or has two entries | the barcode was declared without its value, or with two values | declare it `known`, with the index in forward orientation as its one entry |
@@ -651,18 +650,17 @@ Run the three steps in this order, and stop at the first step that reports an er
 
 1. **Schema checks.** Reject duplicate keys while parsing the metadata. Many JSON parsers otherwise keep the last of two equal keys without a message. Then validate against `grz-schema.json`.
 2. **Metadata checks.** They compare fields of the submission and need no file access.
-3. **Data checks.** The record length check runs on every record, on the pass that already computes the checksum. The known sequence check and the UMI composition check run on the record sample of each file.
+3. **Data checks.** The record length check runs on every record, on the pass that already computes the checksum. The known sequence check runs on the record sample of each file.
 
 Extraction runs only after all three steps passed without an error.
 
 ## Reference code
 
-Python, standard library only: the rejection of duplicate keys, the metadata checks that look at one layout, the three FASTQ data checks, and the sample barcode.
+Python, standard library only: the rejection of duplicate keys, the metadata checks that look at one layout, the two FASTQ data checks, and the sample barcode.
 
 ```python
 import gzip
 import json
-from collections import Counter
 from itertools import islice
 
 SAMPLE = 10_000
@@ -774,26 +772,6 @@ def check_known_sequences(segments, sample):
     return warnings
 
 
-def check_umi_composition(segments, sample):
-    """Return one warning per degenerate position of a random UMI."""
-    warnings = []
-    for index, (seg, start, stop) in enumerate(positions(segments)):
-        if seg["segmentType"] != "umi" or seg["sequenceType"] != "random" or not sample:
-            continue
-        cut = [seq[start:stop] for seq in sample]
-        for offset in range(seg["length"]):
-            counts = Counter(bases[offset] for bases in cut if len(bases) > offset)
-            if not counts:
-                continue
-            base, count = counts.most_common(1)[0]
-            if count / len(sample) > 0.90:
-                warnings.append(
-                    f"UMI composition: segment {index}, base {offset + 1}: "
-                    f"{base} in {count / len(sample):.1%} of {len(sample)} records"
-                )
-    return warnings
-
-
 def sample_barcode(lab_data):
     """Return the sample barcode. A sampleBarcode segment wins over labData.barcode."""
     parts = [seg["sequences"][0]
@@ -850,8 +828,7 @@ layout_errors, layout_warnings = check_layout(segments)   # needs no file
 
 error = check_record_length(segments, read_sequences(path))   # every record
 sample = list(read_sequences(path, SAMPLE))                   # first 10,000 records
-warnings = (check_known_sequences(segments, sample)
-            + check_umi_composition(segments, sample))
+warnings = check_known_sequences(segments, sample)
 ```
 
 ## Pipeline parameters
@@ -925,7 +902,6 @@ The DRAGEN 4.5 documentation describes `--umi-source=sequence` with `--umi-seque
 | `ACGTACAGATTACAGGCTTA` | Known sequence | match, one mismatch on 7 bases |
 | `ACGAACAGATTACAGGCTTA` | Known sequence | no match, two mismatches |
 | `ACGTACNGATTACAGGCTTA` | Known sequence | match, the `N` is the one allowed mismatch |
-| 10,000 records of the example "Inline UMI" that all start with `A` | UMI composition | warning for the first base |
 
 **Record length with a variable segment.** The layout is `umi` 12 `random`, then `insert` `random` with `minLength` 1 and `maxLength` 600.
 

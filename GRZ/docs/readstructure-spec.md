@@ -197,7 +197,6 @@ A layout cuts each record in exactly one way, because it holds at most one varia
 |---|---|---|---|
 | **Record length** | in a fixed layout, every record has exactly the summed length. In a layout with a variable segment, every record has at least the fixed lengths plus `minLength` and at most the fixed lengths plus `maxLength` | every record | error |
 | **Known sequence** | for each `known` segment: at least 95 percent of the records match an entry in `sequences` | the record sample | warning |
-| **UMI composition** | for each `random` `umi` segment: at no position of the segment does one base exceed 90 percent of the records | the record sample | warning |
 | **UMI tag complete** | in a BAM: either every record carries `RX`, or none does | every record | error |
 
 **How the known sequence check matches.**
