@@ -1,7 +1,7 @@
 # `readStructure` implementation guide
 
 > [!WARNING]
-> **Preliminary and subject to change.** The examples, the conversion settings and the reference code in this guide can still change. Do not build production tooling on them yet.
+> **Best effort.** This guide covers the sequencing setups known so far. It will be extended and corrected as new setups come up.
 
 **tl;dr**
 
