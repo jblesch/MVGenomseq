@@ -9,7 +9,6 @@
 - `readStructure` is required whenever a FASTQ file is submitted, and optional with BAM.
 - A submitted FASTQ holds every kit base in the read sequence. A UMI in the read name is ignored. Adapter bases may be masked and must not be removed.
 - A `known` segment is checked against the data, and a mismatch is an error.
-- The GRZ extracts the kit bases, using the declaration.
 
 This file states the rules, independent of any software. Worked examples, settings for specific software, and reference code are in `readstructure-implementation-guide.md`.
 
