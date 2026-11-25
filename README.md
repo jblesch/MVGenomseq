@@ -16,6 +16,13 @@ This folder contains the core JSON Schema for the **data types** used in the mod
 #### Common
 - `grz-schema.json`: General metadata schema for submissions to the GRZ
 
+#### `GRZ/docs`
+
+Specifications for fields whose rules go beyond what the schema can express.
+
+- `readstructure-spec.md`: the normative rules and checks for `labData.readStructure`
+- `readstructure-implementation-guide.md`: examples for submitters, and reference code for validation and extraction at the GRZ
+
 
 ### `/Prüfbericht`
 
