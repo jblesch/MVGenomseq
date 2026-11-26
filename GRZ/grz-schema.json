@@ -466,7 +466,7 @@
                 },
                 "adapters":{
                   "type":"object",
-                  "description":"The adapter trimming sequences of each data read, and whether adapter bases were removed from the FASTQ records. Required whenever a FASTQ file is submitted, and forbidden otherwise.",
+                  "description":"The adapter trimming sequences of each data read, and whether adapter bases were removed from the FASTQ records. Required whenever a FASTQ file is submitted, and forbidden otherwise. The rules for submitted FASTQ files are in GRZ/docs/fastq-spec.md.",
                   "additionalProperties":false,
                   "required":[
                     "sequences",
@@ -505,7 +505,7 @@
                 },
                 "readNamePattern":{
                   "type":"string",
-                  "description":"Every read name of the FASTQ files of this lab data entry matches this regular expression. The read name is the first line of a record without the leading '@' and without the line ending, including any comment behind the first whitespace. It holds only the characters 0x20 to 0x7E. The expression captures the named groups readId and readNumber, and for a UMI library also the named group umi. Mates in R1 and R2 have the same readId. In a UMI library, they also have the same umi. readNumber is 1 in R1 files and 2 in R2 files. Choosing an expression with a umi group declares a UMI library. Required whenever a FASTQ file is submitted, and forbidden otherwise. Named groups are written (?<name>...), as in ECMA-262. Further expressions may be added for further read name formats.",
+                  "description":"Every read name of the FASTQ files of this lab data entry matches this regular expression. The read name is the first line of a record without the leading '@' and without the line ending, including any comment behind the first whitespace. It holds only the characters 0x20 to 0x7E. The expression captures the named groups readId and readNumber, and for a UMI library also the named group umi. Mates in R1 and R2 have the same readId. In a UMI library, they also have the same umi. readNumber is 1 in R1 files and 2 in R2 files. Choosing an expression with a umi group declares a UMI library. Required whenever a FASTQ file is submitted, and forbidden otherwise. Named groups are written (?<name>...), as in ECMA-262. Further expressions may be added for further read name formats. The rules and checks are in GRZ/docs/fastq-spec.md.",
                   "oneOf":[
                     {
                       "title":"Read number in the comment",
