@@ -286,6 +286,38 @@
                 "barcode",
                 "sequencingLayout"
               ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["sequenceData"],
+                    "properties":{"sequenceData":{"required":["files"],"properties":{"files":{"contains":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}}}}}}
+                  },
+                  "then":{
+                    "required":["adapters"],
+                    "allOf":[
+                      {
+                        "if":{"required":["sequencingLayout"],"properties":{"sequencingLayout":{"const":"paired-end"}}},
+                        "then":{
+                          "properties":{
+                            "adapters":{"properties":{"sequences":{"required":["R2"]}}},
+                            "sequenceData":{"properties":{"files":{"items":{"if":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}},"then":{"required":["readOrder"]}}}}}
+                          }
+                        }
+                      },
+                      {
+                        "if":{"required":["sequencingLayout"],"properties":{"sequencingLayout":{"const":"single-end"}}},
+                        "then":{
+                          "properties":{
+                            "adapters":{"properties":{"sequences":{"properties":{"R2":false}}}},
+                            "sequenceData":{"properties":{"files":{"items":{"if":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}},"then":{"properties":{"readOrder":{"const":"R1"}}}}}}}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "else":{"properties":{"adapters":false}}
+                }
+              ],
               "properties":{
                 "labDataName":{
                   "type":"string",
@@ -431,6 +463,45 @@
                     "reverse",
                     "other"
                   ]
+                },
+                "adapters":{
+                  "type":"object",
+                  "description":"The adapter trimming sequences of each data read, and whether adapter bases were removed from the FASTQ records. Required whenever a FASTQ file is submitted, and forbidden otherwise.",
+                  "additionalProperties":false,
+                  "required":[
+                    "sequences",
+                    "trimmed"
+                  ],
+                  "properties":{
+                    "sequences":{
+                      "type":"object",
+                      "description":"The adapter trimming sequences of each data read, as the manufacturer of the adapters lists them for Read 1 and Read 2. Each key is a readOrder of files[]. R1 is always present, and R2 is present where the library is sequenced paired-end. The sequences of R1 and R2 may be equal.",
+                      "additionalProperties":false,
+                      "required":[
+                        "R1"
+                      ],
+                      "properties":{
+                        "R1":{
+                          "type":"array",
+                          "description":"The adapter sequences that R1 reads into behind the end of the insert, written 5' to 3' as they appear in the read. Where the manufacturer joins several sequences with '+', each part is its own item.",
+                          "minItems":1,
+                          "uniqueItems":true,
+                          "items":{"type":"string","pattern":"^[ACGT]+$"}
+                        },
+                        "R2":{
+                          "type":"array",
+                          "description":"The adapter sequences that R2 reads into behind the end of the insert, in the same form as R1.",
+                          "minItems":1,
+                          "uniqueItems":true,
+                          "items":{"type":"string","pattern":"^[ACGT]+$"}
+                        }
+                      }
+                    },
+                    "trimmed":{
+                      "type":"boolean",
+                      "description":"true: adapter bases were removed from the 3' end of at least one record, so a record may be shorter than files[].readLength. false: every record has files[].readLength bases. In both cases, adapter bases may remain in a record or be replaced with N, and a short record may be replaced whole with N."
+                    }
+                  }
                 },
                 "tumorCellCount":{
                   "type":"array",
@@ -615,11 +686,11 @@
                               "R1",
                               "R2"
                             ],
-                            "description":"Indicates the read order for paired-end reads."
+                            "description":"Indicates the read order for paired-end reads. Required for every FASTQ file where sequencingLayout is paired-end. Where it is single-end, only R1 is allowed."
                           },
                           "readLength":{
                             "type":"integer",
-                            "description":"The read length; in the case of long-read sequencing it is the rounded average read length.",
+                            "description":"The read length. For FASTQ, it is the number of bases of each record before any adapter trimming. Every record has this many bases, unless adapters.trimmed is true. In the case of long-read sequencing it is the rounded average read length.",
                             "minimum":0
                           },
                           "flowcellId":{
