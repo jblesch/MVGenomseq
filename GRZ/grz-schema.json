@@ -293,7 +293,7 @@
                     "properties":{"sequenceData":{"required":["files"],"properties":{"files":{"contains":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}}}}}}
                   },
                   "then":{
-                    "required":["adapters"],
+                    "required":["adapters","readNamePattern"],
                     "allOf":[
                       {
                         "if":{"required":["sequencingLayout"],"properties":{"sequencingLayout":{"const":"paired-end"}}},
@@ -315,7 +315,7 @@
                       }
                     ]
                   },
-                  "else":{"properties":{"adapters":false}}
+                  "else":{"properties":{"adapters":false,"readNamePattern":false}}
                 }
               ],
               "properties":{
@@ -502,6 +502,22 @@
                       "description":"true: adapter bases were removed from the 3' end of at least one record, so a record may be shorter than files[].readLength. false: every record has files[].readLength bases. In both cases, adapter bases may remain in a record or be replaced with N, and a short record may be replaced whole with N."
                     }
                   }
+                },
+                "readNamePattern":{
+                  "type":"string",
+                  "description":"Every read name of the FASTQ files of this lab data entry matches this regular expression. The read name is the first line of a record without the leading '@' and without the line ending, including any comment behind the first whitespace. It holds only the characters 0x20 to 0x7E. The expression captures the named groups readId and readNumber, and for a UMI library also the named group umi. Mates in R1 and R2 have the same readId. In a UMI library, they also have the same umi. readNumber is 1 in R1 files and 2 in R2 files. Choosing an expression with a umi group declares a UMI library. Required whenever a FASTQ file is submitted, and forbidden otherwise. Named groups are written (?<name>...), as in ECMA-262. Further expressions may be added for further read name formats.",
+                  "oneOf":[
+                    {
+                      "title":"Read number in the comment",
+                      "description":"readNumber is the first colon-separated field of the comment, for example 1 in '1:N:0:TAAGGCGA'. readId is the read name in front of the comment, and it holds no '/'.",
+                      "const":"^(?<readId>[^\\s\\/]+)\\s(?<readNumber>[12]):.*$"
+                    },
+                    {
+                      "title":"Read number in the comment, UMI as the last colon-separated field",
+                      "description":"For a UMI library. umi is the last colon-separated field in front of the comment. Several UMIs are joined by '+'. A UMI part from an index read that was read as reverse complement starts with 'r'. readId is everything in front of that ':', and it holds no '/'. readNumber is the first colon-separated field of the comment.",
+                      "const":"^(?<readId>[^\\s\\/]+):(?<umi>r?[ACGTN]+(?:\\+r?[ACGTN]+)*)\\s(?<readNumber>[12]):.*$"
+                    }
+                  ]
                 },
                 "tumorCellCount":{
                   "type":"array",
