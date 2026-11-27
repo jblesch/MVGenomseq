@@ -16,6 +16,11 @@ This folder contains the core JSON Schema for the **data types** used in the mod
 #### Common
 - `grz-schema.json`: General metadata schema for submissions to the GRZ
 
+#### `GRZ/docs`
+
+Specifications for fields whose rules go beyond what the schema can express.
+
+- `fastq-spec.md`: the rules and checks for submitted FASTQ files, `labData.readNamePattern` and `labData.adapters`
 
 ### `/Prüfbericht`
 

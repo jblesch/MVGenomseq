@@ -286,6 +286,38 @@
                 "barcode",
                 "sequencingLayout"
               ],
+              "allOf":[
+                {
+                  "if":{
+                    "required":["sequenceData"],
+                    "properties":{"sequenceData":{"required":["files"],"properties":{"files":{"contains":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}}}}}}
+                  },
+                  "then":{
+                    "required":["adapters","readNamePattern"],
+                    "allOf":[
+                      {
+                        "if":{"required":["sequencingLayout"],"properties":{"sequencingLayout":{"const":"paired-end"}}},
+                        "then":{
+                          "properties":{
+                            "adapters":{"properties":{"sequences":{"required":["R2"]}}},
+                            "sequenceData":{"properties":{"files":{"items":{"if":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}},"then":{"required":["readOrder"]}}}}}
+                          }
+                        }
+                      },
+                      {
+                        "if":{"required":["sequencingLayout"],"properties":{"sequencingLayout":{"const":"single-end"}}},
+                        "then":{
+                          "properties":{
+                            "adapters":{"properties":{"sequences":{"properties":{"R2":false}}}},
+                            "sequenceData":{"properties":{"files":{"items":{"if":{"required":["fileType"],"properties":{"fileType":{"const":"fastq"}}},"then":{"properties":{"readOrder":{"const":"R1"}}}}}}}
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "else":{"properties":{"adapters":false,"readNamePattern":false}}
+                }
+              ],
               "properties":{
                 "labDataName":{
                   "type":"string",
@@ -419,8 +451,9 @@
                   "description":"Name/version of the enrichment kit"
                 },
                 "barcode":{
-                  "type":"string",
-                  "description":"The barcode used or 'na'"
+                  "type":["string","null"],
+                  "description":"The index sequence of the sample, in forward orientation, never its reverse complement. For the second index, this is the sequence that the kit lists for the forward strand workflow. Two indexes are joined with '-', first index then second index, for example 'TAAGGCGA-AAGGCTAT'. Where the library has no index, or the sequence is not known, the value is null. The key is always present, and 'na' is not a value.",
+                  "pattern":"^[ACGT]+(-[ACGT]+)?$"
                 },
                 "sequencingLayout":{
                   "type":"string",
@@ -430,6 +463,61 @@
                     "paired-end",
                     "reverse",
                     "other"
+                  ]
+                },
+                "adapters":{
+                  "type":"object",
+                  "description":"The adapter trimming sequences of each data read, and whether adapter bases were removed from the FASTQ records. Required whenever a FASTQ file is submitted, and forbidden otherwise. The rules for submitted FASTQ files are in GRZ/docs/fastq-spec.md.",
+                  "additionalProperties":false,
+                  "required":[
+                    "sequences",
+                    "trimmed"
+                  ],
+                  "properties":{
+                    "sequences":{
+                      "type":"object",
+                      "description":"The adapter trimming sequences of each data read, as the manufacturer of the adapters lists them for Read 1 and Read 2. Each key is a readOrder of files[]. R1 is always present, and R2 is present where the library is sequenced paired-end. The sequences of R1 and R2 may be equal.",
+                      "additionalProperties":false,
+                      "required":[
+                        "R1"
+                      ],
+                      "properties":{
+                        "R1":{
+                          "type":"array",
+                          "description":"The adapter sequences that R1 reads into behind the end of the insert, written 5' to 3' as they appear in the read. Where the manufacturer joins several sequences with '+', each part is its own item.",
+                          "minItems":1,
+                          "uniqueItems":true,
+                          "items":{"type":"string","pattern":"^[ACGT]+$"}
+                        },
+                        "R2":{
+                          "type":"array",
+                          "description":"The adapter sequences that R2 reads into behind the end of the insert, in the same form as R1.",
+                          "minItems":1,
+                          "uniqueItems":true,
+                          "items":{"type":"string","pattern":"^[ACGT]+$"}
+                        }
+                      }
+                    },
+                    "trimmed":{
+                      "type":"boolean",
+                      "description":"true: adapter bases were removed from the 3' end of at least one record, so a record may be shorter than files[].readLength. false: every record has files[].readLength bases. In both cases, adapter bases may remain in a record or be replaced with N, and a short record may be replaced whole with N."
+                    }
+                  }
+                },
+                "readNamePattern":{
+                  "type":"string",
+                  "description":"Every read name of the FASTQ files of this lab data entry matches this regular expression. The read name is the first line of a record without the leading '@' and without the line ending, including any comment behind the first whitespace. It holds only the characters 0x20 to 0x7E. The expression captures the named groups readId and readNumber, and for a UMI library also the named group umi. Mates in R1 and R2 have the same readId. In a UMI library, they also have the same umi. readNumber is 1 in R1 files and 2 in R2 files. Choosing an expression with a umi group declares a UMI library. Required whenever a FASTQ file is submitted, and forbidden otherwise. Named groups are written (?<name>...), as in ECMA-262. Further expressions may be added for further read name formats. The rules and checks are in GRZ/docs/fastq-spec.md.",
+                  "oneOf":[
+                    {
+                      "title":"Read number in the comment",
+                      "description":"readNumber is the first colon-separated field of the comment, for example 1 in '1:N:0:TAAGGCGA'. readId is the read name in front of the comment, and it holds no '/'.",
+                      "const":"^(?<readId>[^\\s\\/]+)\\s(?<readNumber>[12]):.*$"
+                    },
+                    {
+                      "title":"Read number in the comment, UMI as the last colon-separated field",
+                      "description":"For a UMI library. umi is the last colon-separated field in front of the comment. Several UMIs are joined by '+'. A UMI part from an index read that was read as reverse complement starts with 'r'. readId is everything in front of that ':', and it holds no '/'. readNumber is the first colon-separated field of the comment.",
+                      "const":"^(?<readId>[^\\s\\/]+):(?<umi>r?[ACGTN]+(?:\\+r?[ACGTN]+)*)\\s(?<readNumber>[12]):.*$"
+                    }
                   ]
                 },
                 "tumorCellCount":{
@@ -615,11 +703,11 @@
                               "R1",
                               "R2"
                             ],
-                            "description":"Indicates the read order for paired-end reads."
+                            "description":"Indicates the read order for paired-end reads. Required for every FASTQ file where sequencingLayout is paired-end. Where it is single-end, only R1 is allowed."
                           },
                           "readLength":{
                             "type":"integer",
-                            "description":"The read length; in the case of long-read sequencing it is the rounded average read length.",
+                            "description":"The read length. For FASTQ, it is the number of bases of each record before any adapter trimming. Every record has this many bases, unless adapters.trimmed is true. In the case of long-read sequencing it is the rounded average read length.",
                             "minimum":0
                           },
                           "flowcellId":{
